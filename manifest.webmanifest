@@ -1,0 +1,16 @@
+{
+  "name": "Mon congélateur",
+  "short_name": "Congélateur",
+  "description": "Le stock de nos congélateurs, simple et partagé.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e3f2fb",
+  "theme_color": "#e3f2fb",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
