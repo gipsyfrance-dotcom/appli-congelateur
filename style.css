@@ -221,3 +221,64 @@ textarea.inp{height:92px;padding:12px 14px;resize:none}
 
 .skel{height:84px;border-radius:18px;background:linear-gradient(90deg,#e6f1f8 25%,#f3f9fd 50%,#e6f1f8 75%);background-size:200% 100%;animation:sk 1.3s infinite;margin-bottom:10px}
 @keyframes sk{to{background-position:-200% 0}}
+
+/* ---------- v2 : accueil, stock faible, courses/budget, synthèse ---------- */
+.bigs.one{grid-template-columns:1fr}
+.bigbtn.wide{flex-direction:row;justify-content:flex-start;text-align:left;gap:14px;min-height:0;padding:16px 18px}
+.bigbtn.wide .bi{margin-bottom:0;flex:none}
+.bigbtn.wide .bt{display:flex;flex-direction:column;gap:2px}
+.bigbtn.teal{background:linear-gradient(160deg,#35b4cb,#16788d);color:#fff;box-shadow:0 10px 22px rgba(31,147,170,.32)}
+.bigbtn.teal .bi{color:#16788d}
+.bigbtn.teal small{opacity:.92}
+.tiles.four{grid-template-columns:1fr 1fr;gap:12px}
+.tile.mint{background:linear-gradient(170deg,#c4f0e3,#9fe3cf);color:#0d5e4d}.tile.mint .ti{color:#13876f}
+
+.seg2{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:rgba(255,255,255,.7);border-radius:16px;padding:5px;margin-bottom:12px;border:1px solid var(--line)}
+.seg2 button{height:42px;border-radius:12px;border:0;background:transparent;font-weight:800;color:var(--ink2);display:flex;align-items:center;justify-content:center;gap:6px}
+.seg2 button.on{background:#fff;color:var(--teal-d);box-shadow:0 3px 10px rgba(33,92,128,.12)}
+.seg2 button.warn.on{color:var(--amber-d)}
+.cnt{border-radius:999px;background:#e6f0f6;padding:1px 8px;font-size:12.5px}
+.seg2 button.warn.on .cnt{background:#fde3a9}
+
+.sug button{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:0;background:none;text-align:left;font-weight:700}
+.sug .sm{margin-left:auto;font-size:12.5px;color:var(--ink2);font-weight:600}
+.sug .create{color:var(--teal-d);font-weight:800;background:#eaf7fb;border-radius:0 0 18px 18px}
+.sug .create .ic{width:18px;height:18px}
+.sel{display:flex;align-items:center;gap:10px;background:#dcf3ec;color:#0d5e4d;border-radius:14px;padding:10px 12px;font-weight:700}
+.sel.new{background:#fff6dc;color:#7a5a05}
+.sel span{flex:1}
+.sel button{border:0;background:rgba(255,255,255,.7);border-radius:10px;padding:6px 11px;font-weight:800;font-size:12.5px}
+
+.lnk{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;border:0;background:none;color:var(--teal-d);font-weight:800;font-size:14.5px;padding:14px 0 2px}
+.lnk .ic{width:16px;height:16px}
+.month{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.month b{font-size:18px;font-weight:800}
+.month .icon-btn:disabled{opacity:.35}
+.bud{padding:16px;margin-bottom:12px}
+.bud .lbl{font-size:13px;color:var(--ink2);font-weight:700}
+.bud .tot{font-size:34px;font-weight:800;letter-spacing:-.5px;margin:2px 0 8px}
+.bar{height:12px;border-radius:6px;background:#e6f0f6;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#35b4cb,#16788d)}
+.bar i.over{background:linear-gradient(90deg,#ee7d76,#d9433a)}
+.bud .ln{display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;margin-top:8px;color:var(--ink2)}
+.who{display:grid;gap:12px;margin-bottom:12px}
+.who .card{padding:12px 14px}
+.who small{color:var(--ink2);font-weight:700;font-size:12.5px}
+.who b{display:block;font-size:19px;font-weight:800}
+.exp{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.exp .ed{width:40px;height:40px;border-radius:12px;background:#dcf3ec;color:#13876f;display:grid;place-items:center;flex:none}
+.exp .eb{flex:1;min-width:0}
+.exp .eb b{display:block;font-size:15.5px}
+.exp .eb small{color:var(--ink2);font-weight:600;font-size:12.5px}
+.exp .am{font-weight:800;font-size:16px}
+.edit{width:38px;height:38px;border-radius:12px;border:0;background:#e6f2fa;color:#2c6a8c;display:grid;place-items:center;flex:none}
+.edit .ic{width:18px;height:18px}
+.totline{display:flex;justify-content:space-between;align-items:center;background:#eaf7fb;border-radius:14px;padding:12px 14px;font-weight:800;margin-bottom:14px}
+.totline b{font-size:22px}
+.trow{display:grid;gap:4px;padding:11px 12px;font-size:13.5px;text-align:right;border-top:1px solid var(--line)}
+.trow span:first-child{text-align:left;font-weight:700}
+.trow.head{border-top:0;font-size:12px;font-weight:800;color:var(--ink2);text-transform:uppercase;letter-spacing:.3px;background:#f3f9fd}
+.trow.foot{background:#eaf7fb;font-weight:800;font-size:14px}
+.trow.mut{color:#a8bfce}
+.trow .tt{font-weight:800}
+.sheet-c{max-height:92vh;overflow-y:auto}

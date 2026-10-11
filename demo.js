@@ -40,12 +40,26 @@
         { id: uid(), article: 'Beurre', achete: false, ajoutePar: 'Sara', date: daysAgo(1) },
         { id: uid(), article: 'Blancs de poulet', achete: false, ajoutePar: 'Jordana', date: daysAgo(1) },
         { id: uid(), article: 'Épinards', achete: false, ajoutePar: 'Sara', date: daysAgo(0) }
-      ]
+      ],
+      depenses: seedDep(),
+      budget: 450
     };
   }
 
+  function seedDep() {
+    var D = function (n, magasin, s, j) { return { id: uid(), date: daysAgo(n), magasin: magasin, parts: { Sara: s, Jordana: j } }; };
+    return [
+      D(1, 'Carrefour', 87.4, 0), D(3, 'Boucherie', 0, 42.9), D(6, 'Picard', 30, 33.15), D(9, 'Marché', 28.5, 0),
+      D(14, 'Leclerc', 60, 52.3), D(33, 'Leclerc', 0, 134.2), D(45, 'Picard', 71.8, 0), D(62, 'Carrefour', 98.6, 0),
+      D(80, 'Marché', 0, 35.4), D(95, 'Leclerc', 120.5, 40), D(120, 'Picard', 0, 64.3), D(150, 'Carrefour', 101.2, 0)
+    ];
+  }
+
   var db;
-  function load() { try { var v = localStorage.getItem(KEY); if (v) return JSON.parse(v); } catch (e) {} return seed(); }
+  function load() {
+    try { var v = localStorage.getItem(KEY); if (v) { var o = JSON.parse(v); if (!o.depenses) { o.depenses = seedDep(); o.budget = 450; } return o; } } catch (e) {}
+    return seed();
+  }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
   db = load();
 
@@ -69,7 +83,24 @@
       return { nom: a.nom, categorie: a.categorie, unite: a.unite, alerte: a.alerte, seuil: a.seuil, photo: a.photo, stock: stock, emplacements: emplacements };
     });
     var mv = db.mouvements.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 200);
-    return { emplacements: db.emplacements, categories: db.categories, personnes: PERSONNES, aliments: aliments, courses: db.courses.slice(), mouvements: mv };
+    var deps = db.depenses.map(function (d) {
+      var t = (d.parts.Sara || 0) + (d.parts.Jordana || 0);
+      return { id: d.id, date: d.date, magasin: d.magasin, parts: { Sara: d.parts.Sara || 0, Jordana: d.parts.Jordana || 0 }, total: Math.round(t * 100) / 100 };
+    }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    return { emplacements: db.emplacements, categories: db.categories, personnes: PERSONNES, aliments: aliments, courses: db.courses.slice(), mouvements: mv,
+      personnesDep: ['Sara', 'Jordana'], depenses: deps, budget: db.budget || 0 };
+  }
+
+  function depParts(p) {
+    var parts = {}, total = 0;
+    ['Sara', 'Jordana'].forEach(function (n) {
+      var v = Math.round((Number(String((p.parts || {})[n] == null ? 0 : p.parts[n]).replace(',', '.')) || 0) * 100) / 100;
+      if (v < 0) throw new Error('Les montants ne peuvent pas être négatifs.');
+      parts[n] = v; total += v;
+    });
+    if (!(total > 0)) throw new Error('Saisissez au moins un montant.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(p.date || ''))) throw new Error('Choisissez une date.');
+    return parts;
   }
 
   function findAl(nom) { return db.aliments.filter(function (a) { return a.nom === nom; })[0]; }
@@ -121,6 +152,16 @@
         if (!al) throw new Error('Aliment introuvable.');
         if (Math.abs(al.stock) > 1e-9) throw new Error('Il reste du stock : retirez-le avant de supprimer.');
         db.aliments = db.aliments.filter(function (x) { return x.nom !== p.aliment; }); break;
+      case 'addDepense':
+        db.depenses.push({ id: uid(), date: p.date, magasin: String(p.magasin || '').trim() || 'Courses', parts: depParts(p) }); break;
+      case 'updateDepense':
+        var dd = db.depenses.filter(function (x) { return x.id === p.id; })[0];
+        if (!dd) throw new Error('Dépense introuvable (déjà supprimée ?).');
+        dd.parts = depParts(p); dd.date = p.date; dd.magasin = String(p.magasin || '').trim() || 'Courses'; break;
+      case 'deleteDepense':
+        if (!db.depenses.some(function (x) { return x.id === p.id; })) throw new Error('Dépense introuvable (déjà supprimée ?).');
+        db.depenses = db.depenses.filter(function (x) { return x.id !== p.id; }); break;
+      case 'setBudget': db.budget = Math.max(0, Number(p.budget) || 0); break;
       default: throw new Error('Action inconnue : ' + action);
     }
     if (action !== 'bootstrap') save();

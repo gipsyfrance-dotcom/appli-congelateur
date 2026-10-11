@@ -62,7 +62,10 @@
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     refresh: '<path d="M20 11a8 8 0 0 0-14-4M4 4v4h4M4 13a8 8 0 0 0 14 4M20 20v-4h-4"/>',
     key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>',
-    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>'
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
+    euro: '<path d="M18 7a7 7 0 1 0 0 10M4 10h9M4 14h9"/>',
+    pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+    chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'
   };
   var ico = function (n, c) { return '<svg class="ic ' + (c || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + P[n] + '</svg>'; };
 
@@ -79,7 +82,8 @@
   var data = ls.get('cg_data', null);
   var loading = false, loadError = '', pending = 0, dirty = false;
   var me = ls.get('cg_me', '');
-  var UI = { stockQ: '', filt: { emp: '', cat: '' }, showAll: false, showBought: false };
+  var UI = { stockQ: '', filt: { emp: '', cat: '' }, showAll: false, showBought: false, low: false, cTab: 'buy', month: '', year: 0, synthFrom: 'more' };
+  var EXP = { id: null };
   var F = null;
   var routeChanged = true;
   var sheetResolve = null;
@@ -136,6 +140,24 @@
   var placeCount = function (emp) { return data.aliments.filter(function (a) { return a.emplacements.some(function (e) { return e.nom === emp && e.qte > 0; }); }).length; };
   var inStock = function (a) { return a.stock > 0 || a.emplacements.some(function (e) { return e.qte > 0; }); };
 
+  /* ----- dépenses de courses ----- */
+  var persDep = function () { return data.personnesDep || ['Sara', 'Jordana']; };
+  var eur = function (n) { return (Math.round(n * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; };
+  var nb = function (n) { return (Math.round(n * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var pnum = function (v) { var n = Number(String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
+  var curMonth = function () { return today().slice(0, 7); };
+  var depList = function () { return data.depenses || []; };
+  var MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  var MONTHS_S = ['Janv.', 'Févr.', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
+  function monthLabel(ym) { var m = MONTHS[Number(ym.slice(5, 7)) - 1]; return m.charAt(0).toUpperCase() + m.slice(1) + ' ' + ym.slice(0, 4); }
+  function shiftMonth(ym, d) { var y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)) - 1 + d; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + ('0' + (m + 1)).slice(-2); }
+  function sumDep(list) {
+    var by = {}; persDep().forEach(function (p) { by[p] = 0; });
+    var total = 0;
+    list.forEach(function (d) { persDep().forEach(function (p) { var v = (d.parts && d.parts[p]) || 0; by[p] += v; total += v; }); });
+    return { by: by, total: total };
+  }
+
   /* ============================== Composants ============================== */
   function thumb(a, cls) {
     var ci = catInfo(a.categorie);
@@ -187,6 +209,12 @@
       '<button class="btn" type="submit">Entrer</button><p class="hint">Ce code reste enregistré sur cet appareil uniquement.</p></form>';
   }
 
+  function budgetTileText() {
+    var tot = sumDep(depList().filter(function (d) { return d.date.slice(0, 7) === curMonth(); })).total, b = data.budget || 0;
+    if (b > 0) return tot <= b ? 'reste ' + eur(b - tot).replace(',00', '') : 'budget dépassé';
+    return eur(tot).replace(',00', '') + ' ce mois-ci';
+  }
+
   function viewHome() {
     var low = lowItems().length, buy = toBuy().length;
     var places = data.emplacements.map(function (n) {
@@ -197,13 +225,13 @@
       '<header class="hero">' + ico('snow', 'hero-ic') + '<div><h1>Mes congélateurs</h1><p>Tout votre stock au bout des doigts</p></div></header>' +
       '<a class="search" href="#/stock?focus=1">' + ico('search') + '<span>Rechercher un aliment</span></a>' +
       '<div class="scene">' + SCENE + '<p class="hand">De bons repas<br>toute l’année ! ♡</p></div>' +
-      '<div class="bigs">' +
-      '<a class="bigbtn mint" href="#/mouvement?type=Ajout"><span class="bi">' + ico('plus') + '</span><b>Ajouter</b><small>Un aliment<br>dans le stock</small></a>' +
-      '<a class="bigbtn salmon" href="#/mouvement?type=Retrait"><span class="bi">' + ico('minus') + '</span><b>Retirer</b><small>Un aliment<br>du stock</small></a></div>' +
-      '<div class="tiles">' +
+      '<div class="bigs one">' +
+      '<a class="bigbtn wide teal" href="#/mouvement"><span class="bi">' + ico('snow') + '</span><span class="bt"><b>Enregistrer un mouvement</b><small>Ajouter ou retirer un aliment</small></span></a></div>' +
+      '<div class="tiles four">' +
       '<a class="tile sky" href="#/stock"><span class="ti">' + ico('list') + '</span><b>Voir le stock</b><small>Tous les aliments</small></a>' +
-      '<a class="tile amber" href="#/alertes">' + (low ? '<span class="badge">' + low + '</span>' : '') + '<span class="ti">' + ico('alert') + '</span><b>Stock faible</b><small>À surveiller</small></a>' +
-      '<a class="tile lav" href="#/courses">' + (buy ? '<span class="badge">' + buy + '</span>' : '') + '<span class="ti">' + ico('basket') + '</span><b>À acheter</b><small>Ma liste</small></a></div>' +
+      '<a class="tile amber" href="#/stock?low=1">' + (low ? '<span class="badge">' + low + '</span>' : '') + '<span class="ti">' + ico('alert') + '</span><b>Stock faible</b><small>À surveiller</small></a>' +
+      '<a class="tile lav" href="#/courses">' + (buy ? '<span class="badge">' + buy + '</span>' : '') + '<span class="ti">' + ico('basket') + '</span><b>À acheter</b><small>Ma liste</small></a>' +
+      '<a class="tile mint" href="#/courses?tab=budget"><span class="ti">' + ico('euro') + '</span><b>Budget courses</b><small>' + esc(budgetTileText()) + '</small></a></div>' +
       '<h2 class="sec">' + ico('chest') + 'Mes congélateurs</h2><p class="sub">' + data.emplacements.length + ' espaces, un seul objectif : se régaler !</p>' +
       '<div class="card list">' + places + '</div>';
   }
@@ -228,8 +256,11 @@
   }
   function viewStock(p) {
     var active = (UI.filt.emp ? 1 : 0) + (UI.filt.cat ? 1 : 0);
-    var n = stockItems().length;
-    return header('Stock', 'Tous vos aliments, bien rangés', { back: true, right: '<button class="icon-btn" data-act="filter" aria-label="Filtrer">' + ico('filter') + (active ? '<i class="dot">' + active + '</i>' : '') + '</button>' }) +
+    var n = stockItems().length, lowN = lowItems().length;
+    var seg = '<div class="seg2"><button data-act="setlow" data-low="0" class="' + (!UI.low ? 'on' : '') + '">Tous</button>' +
+      '<button data-act="setlow" data-low="1" class="warn ' + (UI.low ? 'on' : '') + '">Stock faible <span class="cnt">' + lowN + '</span></button></div>';
+    if (UI.low) return header('Stock', 'Tous vos aliments, bien rangés', { back: true }) + seg + lowBody();
+    return header('Stock', 'Tous vos aliments, bien rangés', { back: true }) + seg +
       '<div class="search">' + ico('search') + '<input id="stock-q" type="search" placeholder="Rechercher un aliment" value="' + esc(UI.stockQ) + '" autocomplete="off"></div>' +
       '<div class="resline"><span id="stock-count">' + n + ' résultat' + (n > 1 ? 's' : '') + '</span><button class="pillbtn" data-act="filter">' + ico('filter') + 'Filtre' + (active ? ' (' + active + ')' : '') + '</button></div>' +
       '<div id="stock-list">' + stockListHtml() + '</div>';
@@ -282,25 +313,123 @@
     return '<div class="todo' + (c.achete ? ' bought' : '') + '" data-row="' + esc(c.id) + '"><button class="circle' + (c.achete ? ' on' : '') + '" data-act="' + (c.achete ? 'unachete' : 'achete') + '" data-id="' + esc(c.id) + '" aria-label="' + (c.achete ? 'Remettre dans la liste' : 'Marquer comme acheté') + '">' + (c.achete ? ico('check') : '') + '</button>' +
       '<span class="name">' + esc(c.article) + '</span></div>';
   }
-  function viewAlerts() {
+  function lowBody() {
     var low = lowItems(), buy = toBuy();
     var rows = low.map(function (a) {
       var on = inCourses(a.nom);
       return '<div class="row"><a href="#/aliment/' + enc(a.nom) + '">' + thumb(a) + '</a><a class="row-b" href="#/aliment/' + enc(a.nom) + '"><div class="row-t">' + esc(a.nom) + '</div><div class="row-s low">' + esc(lowText(a)) + '</div></a>' +
         '<button class="round-btn' + (on ? ' on' : '') + '" data-act="addcourse" data-nom="' + esc(a.nom) + '" aria-label="Ajouter aux courses"' + (on ? ' disabled' : '') + '>' + ico(on ? 'check' : 'basket') + '</button></div>';
     }).join('');
-    return header('Stock faible', 'À surveiller pour ne jamais manquer de vos essentiels', { back: true, right: '<span class="icon-btn" aria-hidden="true">' + ico('bell') + '</span>' }) +
-      (low.length ? '<div class="rows">' + rows + '</div>' : '<div class="empty"><div class="big">🎉</div>Tout va bien, aucun stock faible.<p class="hint">Activez l’alerte sur un aliment depuis sa fiche.</p></div>') +
+    return (low.length ? '<div class="rows">' + rows + '</div>' : '<div class="empty"><div class="big">🎉</div>Tout va bien, aucun stock faible.<p class="hint">Activez l’alerte sur un aliment depuis sa fiche.</p></div>') +
       '<div class="lav-card"><div class="head">' + ico('basket') + '<div><h3>À acheter</h3><p>Votre prochaine liste de courses</p></div></div>' +
       (buy.length ? '<div class="card list">' + buy.slice(0, 5).map(todoRow).join('') + '</div>' : '<p class="hint" style="margin:0 0 4px">Rien à acheter pour le moment.</p>') +
       '<a class="more-link" style="color:#4a3896" href="#/courses">' + (buy.length > 5 ? 'Voir les ' + buy.length + ' articles' : 'Ouvrir la liste de courses') + '</a></div>';
   }
 
   function viewCourses() {
+    var buy = toBuy();
+    var seg = '<div class="seg2"><button data-act="ctab" data-tab="buy" class="' + (UI.cTab === 'buy' ? 'on' : '') + '">À acheter <span class="cnt">' + buy.length + '</span></button>' +
+      '<button data-act="ctab" data-tab="budget" class="' + (UI.cTab === 'budget' ? 'on' : '') + '">Budget</button></div>';
+    return header('Courses', 'Liste et budget du mois', { back: true }) + seg + (UI.cTab === 'budget' ? budgetBody() : buyBody());
+  }
+
+  function budgetBody() {
+    var ym = UI.month || curMonth(), list = depList().filter(function (d) { return d.date.slice(0, 7) === ym; });
+    var s = sumDep(list), b = data.budget || 0;
+    var budgetBlock;
+    if (b > 0) {
+      var pct = Math.min(100, Math.round(s.total / b * 100)), over = s.total > b;
+      budgetBlock = '<div class="bar"><i class="' + (over ? 'over' : '') + '" style="width:' + pct + '%"></i></div><div class="ln"><span>Budget : ' + esc(eur(b).replace(',00', '')) + '</span><span>' +
+        (over ? 'Dépassé de ' + esc(eur(s.total - b)) : 'Reste ' + esc(eur(b - s.total))) + '</span></div>';
+    } else budgetBlock = '<button class="lnk" style="padding-top:6px" data-act="setbudget">Définir un budget mensuel' + ico('chev') + '</button>';
+    var who = persDep().map(function (p) { return '<div class="card"><small>Payé par ' + esc(p) + '</small><b>' + esc(eur(s.by[p])) + '</b></div>'; }).join('');
+    var rows = list.map(function (d) {
+      var parts = persDep().filter(function (p) { return (d.parts[p] || 0) > 0; });
+      var who2 = parts.length > 1 ? parts.map(function (p) { return esc(p) + ' ' + esc(eur(d.parts[p])); }).join(' · ') : esc(parts[0] || '');
+      return '<div class="exp"><div class="ed">' + ico('basket') + '</div><div class="eb"><b>' + esc(d.magasin || 'Courses') + '</b><small>' + esc(fmtDate(d.date)) + ' · ' + who2 + '</small></div>' +
+        '<div class="am">' + esc(eur(d.total)) + '</div><button class="edit" data-act="expense-edit" data-id="' + esc(d.id) + '" aria-label="Modifier la dépense">' + ico('pencil') + '</button></div>';
+    }).join('');
+    return '<div class="month"><button class="icon-btn" data-act="monthprev" aria-label="Mois précédent">' + ico('back') + '</button><b>' + esc(monthLabel(ym)) + '</b>' +
+      '<button class="icon-btn" data-act="monthnext" aria-label="Mois suivant"' + (ym >= curMonth() ? ' disabled' : '') + '>' + ico('chev') + '</button></div>' +
+      '<div class="card bud"><div class="lbl">Dépensé ce mois-ci</div><div class="tot">' + esc(eur(s.total)) + '</div>' + budgetBlock + '</div>' +
+      '<div class="who" style="grid-template-columns:repeat(' + persDep().length + ',1fr)">' + who + '</div>' +
+      '<button class="btn" data-act="expense-add">' + ico('plus') + 'Ajouter une dépense</button>' +
+      '<a class="lnk" href="#/synthese?from=courses">Voir la synthèse annuelle' + ico('chev') + '</a>' +
+      '<div class="day">Dépenses du mois</div>' +
+      (list.length ? '<div class="card list">' + rows + '</div>' : '<div class="empty"><div class="big">🧾</div>Aucune dépense ce mois-ci.</div>');
+  }
+
+  function viewSynth() {
+    var y = UI.year || Number(today().slice(0, 4)), curY = Number(today().slice(0, 4)), curM = Number(today().slice(5, 7));
+    var list = depList().filter(function (d) { return Number(d.date.slice(0, 4)) === y; });
+    var tot = sumDep(list), elapsed = y === curY ? curM : 12;
+    var cards = persDep().map(function (p) { return '<div class="card"><small>' + esc(p) + '</small><b>' + esc(eur(tot.by[p])) + '</b></div>'; }).join('');
+    var rows = '';
+    for (var m = 1; m <= 12; m++) {
+      var ym = y + '-' + ('0' + m).slice(-2), s = sumDep(list.filter(function (d) { return d.date.slice(0, 7) === ym; })), fut = y > curY || (y === curY && m > curM);
+      rows += '<div class="trow' + (fut ? ' mut' : '') + '"><span>' + MONTHS_S[m - 1] + '</span>' +
+        persDep().map(function (p) { return '<span>' + (fut ? '—' : nb(s.by[p])) + '</span>'; }).join('') + '<span class="tt">' + (fut ? '—' : nb(s.total)) + '</span></div>';
+    }
+    var cols = 'grid-template-columns:1.05fr ' + persDep().map(function () { return '1fr'; }).join(' ') + ' 1fr';
+    return header('Synthèse des dépenses', 'Courses · à titre indicatif', { back: true }) +
+      '<div class="month"><button class="icon-btn" data-act="yearprev" aria-label="Année précédente">' + ico('back') + '</button><b>' + y + '</b>' +
+      '<button class="icon-btn" data-act="yearnext" aria-label="Année suivante"' + (y >= curY ? ' disabled' : '') + '>' + ico('chev') + '</button></div>' +
+      '<div class="card bud"><div class="lbl">Total dépensé en ' + y + '</div><div class="tot">' + esc(eur(tot.total)) + '</div>' +
+      (tot.total > 0 ? '<div class="lbl">soit ' + esc(eur(tot.total / elapsed)) + ' par mois en moyenne</div>' : '') + '</div>' +
+      '<div class="who" style="grid-template-columns:repeat(' + persDep().length + ',1fr)">' + cards + '</div>' +
+      '<div class="day">Mois par mois</div><div class="card" style="overflow:hidden">' +
+      '<div class="trow head" style="' + cols + '"><span>Mois</span>' + persDep().map(function (p) { return '<span>' + esc(p) + '</span>'; }).join('') + '<span>Total</span></div>' +
+      rows.replace(/class="trow/g, 'style="' + cols + '" class="trow') +
+      '<div class="trow foot" style="' + cols + '"><span>Année</span>' + persDep().map(function (p) { return '<span>' + nb(tot.by[p]) + '</span>'; }).join('') + '<span>' + nb(tot.total) + '</span></div></div>' +
+      '<p class="hint">Montants en euros. Les mois à venir s’afficheront au fil de l’année.</p>';
+  }
+
+  /* ----- feuille de saisie d'une dépense ----- */
+  function openExpense(d) {
+    EXP.id = d ? d.id : null;
+    var parts = persDep().map(function (p, i) {
+      var v = d ? d.parts[p] || 0 : 0;
+      return '<div class="field"><label for="x-p-' + i + '">' + esc(p) + ' (€)</label><input class="inp" id="x-p-' + i + '" data-person="' + esc(p) + '" type="text" inputmode="decimal" autocomplete="off" value="' + esc(String(v).replace('.', ',')) + '"></div>';
+    }).join('');
+    openSheet('<h3>' + (d ? 'Modifier la dépense' : 'Nouvelle dépense') + '</h3>' +
+      '<div class="two"><div class="field"><label for="x-date">Date</label><input class="inp" id="x-date" type="date" value="' + esc(d ? d.date : today()) + '"></div>' +
+      '<div class="field"><label for="x-shop">Magasin</label><input class="inp" id="x-shop" maxlength="40" placeholder="Ex. Carrefour" autocomplete="off" value="' + esc(d ? d.magasin : '') + '"></div></div>' +
+      '<div class="two" style="grid-template-columns:repeat(' + persDep().length + ',1fr)">' + parts + '</div>' +
+      '<div class="totline"><span>Total</span><b id="x-total">0,00 €</b></div><p class="err" id="x-err" hidden></p>' +
+      '<button class="btn" data-act="expense-save" id="x-save">Enregistrer la dépense</button>' +
+      (d ? '<button class="btn danger sm" style="margin-top:10px" data-act="expense-del">' + ico('trash') + 'Supprimer cette dépense</button>' : ''));
+    updateExpTotal();
+  }
+  function expParts() { var o = {}; $$('#sheet [data-person]').forEach(function (i) { o[i.dataset.person] = pnum(i.value); }); return o; }
+  function updateExpTotal() {
+    var el = $('#x-total'); if (!el) return;
+    var p = expParts(), t = 0; Object.keys(p).forEach(function (k) { t += p[k]; }); el.textContent = eur(t);
+  }
+  async function saveExpense() {
+    var parts = expParts(), total = 0; Object.keys(parts).forEach(function (k) { total += parts[k]; });
+    var date = $('#x-date').value, err = $('#x-err'), btn = $('#x-save');
+    var msg = !date ? 'Choisissez une date.' : (Object.keys(parts).some(function (k) { return parts[k] < 0; }) ? 'Les montants ne peuvent pas être négatifs.' : (!(total > 0) ? 'Saisissez au moins un montant.' : ''));
+    if (msg) { err.textContent = msg; err.hidden = false; return; }
+    err.hidden = true; btn.disabled = true;
+    var payload = { date: date, magasin: $('#x-shop').value.trim(), parts: parts };
+    var editing = EXP.id;
+    if (editing) payload.id = editing;
+    try {
+      await write(editing ? 'updateDepense' : 'addDepense', payload);
+      var ym = date.slice(0, 7); UI.month = ym > curMonth() ? '' : ym;
+      closeSheetSilent(); render(); toast(editing ? 'Dépense modifiée ✓' : 'Dépense enregistrée ✓');
+    } catch (e) { btn.disabled = false; err.textContent = e.message; err.hidden = false; }
+  }
+  function openBudget() {
+    openSheet('<h3>Budget mensuel des courses</h3><p>Montant à ne pas dépasser chaque mois (0 pour désactiver).</p>' +
+      '<div class="field"><label for="x-budget">Budget (€)</label><input class="inp" id="x-budget" type="text" inputmode="decimal" autocomplete="off" value="' + esc(String(data.budget || 0).replace('.', ',')) + '"></div>' +
+      '<p class="err" id="x-err" hidden></p><button class="btn" data-act="budget-save" id="x-save">Enregistrer</button>');
+  }
+
+  function buyBody() {
     var buy = toBuy(), bought = data.courses.filter(function (c) { return c.achete; });
     var opts = data.aliments.map(function (a) { return '<option value="' + esc(a.nom) + '">'; }).join('');
-    return header('À acheter', 'Votre prochaine liste de courses', { back: true }) +
-      '<form data-form="course" class="addline"><input class="inp" id="c-new" list="c-list" placeholder="Ajouter un article" autocomplete="off" maxlength="80"><datalist id="c-list">' + opts + '</datalist>' +
+    return '<form data-form="course" class="addline"><input class="inp" id="c-new" list="c-list" placeholder="Ajouter un article" autocomplete="off" maxlength="80"><datalist id="c-list">' + opts + '</datalist>' +
       '<button class="btn" type="submit" aria-label="Ajouter">' + ico('plus') + '</button></form>' +
       (buy.length ? '<div class="card list" id="todo-list">' + buy.map(todoRow).join('') + '</div>' : '<div class="empty"><div class="big">🛒</div>La liste est vide.</div>') +
       (bought.length ? '<button class="more-link" data-act="toggle-bought">' + (UI.showBought ? 'Masquer' : 'Voir') + ' les articles déjà achetés (' + bought.length + ')</button>' +
@@ -325,6 +454,8 @@
     return header('Plus', 'Réglages et raccourcis') +
       '<div class="card pad" style="margin-bottom:14px"><div class="field" style="margin:0"><label>' + 'Qui utilise cet appareil ?' + '</label><div class="seg" style="margin:0;grid-template-columns:repeat(' + data.personnes.length + ',1fr)">' + pers + '</div><p class="hint">Sert à pré-remplir « Personne » dans les mouvements.</p></div></div>' +
       '<div class="card list">' +
+      '<a class="menu-row" href="#/synthese">' + ico('chart') + '<span>Synthèse des dépenses</span>' + ico('chev') + '</a>' +
+      '<button class="menu-row" data-act="setbudget">' + ico('euro') + '<span>Budget mensuel des courses</span>' + ico('chev') + '</button>' +
       '<a class="menu-row" href="#/courses">' + ico('basket') + '<span>Liste de courses</span>' + ico('chev') + '</a>' +
       '<a class="menu-row" href="#/historique">' + ico('clock') + '<span>Historique des mouvements</span>' + ico('chev') + '</a>' +
       '<a class="menu-row" href="#/stock?all=1">' + ico('list') + '<span>Tous les aliments (y compris à zéro)</span>' + ico('chev') + '</a>' +
@@ -336,7 +467,7 @@
 
   /* ----- formulaire de mouvement ----- */
   function initForm(p) {
-    F = { type: p.type === 'Retrait' ? 'Retrait' : 'Ajout', aliment: p.aliment || '', nom: '', cat: '', qte: '', unite: '', emp: p.emp || '', date: today(), pers: me || '', note: '' };
+    F = { type: p.type === 'Retrait' ? 'Retrait' : 'Ajout', aliment: p.aliment || '', q: '', nom: '', cat: '', qte: '', unite: '', emp: p.emp || '', date: today(), pers: me || '', note: '' };
     prefillFromAliment();
   }
   function prefillFromAliment() {
@@ -354,7 +485,7 @@
     if (!F || !$('#f-qte')) return;
     var g = function (id) { var e = $('#' + id); return e ? e.value : undefined; };
     var v;
-    if ((v = g('f-aliment')) !== undefined) F.aliment = v;
+    if ((v = g('f-search')) !== undefined) F.q = v;
     if ((v = g('f-nom')) !== undefined) F.nom = v;
     if ((v = g('f-cat')) !== undefined) F.cat = v;
     if ((v = g('f-qte')) !== undefined) F.qte = v;
@@ -365,10 +496,24 @@
     if ((v = g('f-note')) !== undefined) F.note = v;
   }
   function opt(v, l, sel) { return '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(l) + '</option>'; }
+  function sugsHtml() {
+    var q = norm(F.q); if (!q) return '';
+    var ret = F.type === 'Retrait', pool = ret ? data.aliments.filter(inStock) : data.aliments;
+    var m = pool.filter(function (a) { return norm(a.nom).indexOf(q) >= 0; }).sort(byName).slice(0, 6);
+    var exact = data.aliments.some(function (a) { return norm(a.nom) === q; });
+    var html = m.map(function (a) { return '<button type="button" data-act="pickfood" data-nom="' + esc(a.nom) + '"><span>' + esc(a.nom) + '</span><span class="sm">' + esc(qty(a.stock, a.unite)) + ' en stock</span></button>'; }).join('');
+    if (!ret && !exact) html += '<button type="button" class="create" data-act="createfood">' + ico('plus') + '<span>Créer « ' + esc(F.q.trim()) + ' »</span></button>';
+    if (!html) return '<p class="hint">Aucun aliment en stock ne correspond.</p>';
+    return '<div class="card list sug">' + html + '</div>';
+  }
+  function foodField() {
+    var a = findAl(F.aliment);
+    if (F.aliment === '__new__') return '<div class="sel new"><span>Nouvel aliment : <b>' + esc(F.nom) + '</b> (sera créé)</span><button type="button" data-act="changefood">Changer</button></div>';
+    if (a) return '<div class="sel"><span><b>' + esc(a.nom) + '</b> · ' + esc(qty(a.stock, a.unite)) + ' en stock</span><button type="button" data-act="changefood">Changer</button></div>';
+    return '<div class="search" style="margin-bottom:8px">' + ico('search') + '<input id="f-search" type="text" placeholder="Tape le nom : poulet, glace…" autocomplete="off" value="' + esc(F.q) + '"></div><div id="f-sugs">' + sugsHtml() + '</div>';
+  }
   function moveFields() {
     var ret = F.type === 'Retrait', a = findAl(F.aliment), isNew = F.aliment === '__new__';
-    var list = (ret ? data.aliments.filter(inStock) : data.aliments).slice().sort(byName);
-    var alOpts = opt('', 'Choisir un aliment…', !F.aliment) + list.map(function (x) { return opt(x.nom, x.nom, x.nom === F.aliment); }).join('') + (ret ? '' : opt('__new__', '➕ Nouvel aliment…', isNew));
     var empList = ret && a ? a.emplacements.filter(function (e) { return e.qte > 0; }).map(function (e) { return { v: e.nom, l: e.nom + ' (' + fmtNum(e.qte) + ')' }; })
       : data.emplacements.map(function (n) { return { v: n, l: n }; });
     var empOpts = opt('', 'Choisir un emplacement…', !F.emp) + empList.map(function (e) { return opt(e.v, e.l, e.v === F.emp); }).join('');
@@ -379,9 +524,8 @@
     var persOpts = opt('', '—', !F.pers) + data.personnes.map(function (p) { return opt(p, p, p === F.pers); }).join('');
     return '<div class="seg"><button type="button" data-act="settype" data-type="Ajout" class="' + (!ret ? 'on add' : '') + '">' + ico('plus') + 'Ajouter</button>' +
       '<button type="button" data-act="settype" data-type="Retrait" class="' + (ret ? 'on ret' : '') + '">' + ico('minus') + 'Retirer</button></div>' +
-      '<div class="field"><label for="f-aliment">Aliment <i>*</i></label><select class="inp" id="f-aliment">' + alOpts + '</select></div>' +
-      (isNew ? '<div class="field"><label for="f-nom">Nom du nouvel aliment <i>*</i></label><input class="inp" id="f-nom" maxlength="60" value="' + esc(F.nom) + '" placeholder="Ex. Gratin de Jordana" autocomplete="off"></div>' +
-        '<div class="field"><label for="f-cat">Catégorie <i>*</i></label><select class="inp" id="f-cat">' + catOpts + '</select></div>' : '') +
+      '<div class="field"><label for="f-search">Aliment <i>*</i></label>' + foodField() + '</div>' +
+      (isNew ? '<div class="field"><label for="f-cat">Catégorie <i>*</i></label><select class="inp" id="f-cat">' + catOpts + '</select></div>' : '') +
       '<div class="two"><div class="field"><label for="f-qte">Quantité <i>*</i></label><input class="inp" id="f-qte" type="number" inputmode="decimal" step="any" min="0" value="' + esc(F.qte) + '" placeholder="0"></div>' +
       '<div class="field"><label for="f-unite">Unité</label><select class="inp" id="f-unite"' + (ret ? ' disabled' : '') + '>' + unitOpts + '</select></div></div>' +
       (avail !== null ? '<p class="hint" style="margin:-6px 2px 12px">Disponible dans cet emplacement : ' + esc(qty(avail, a.unite)) + '</p>' : '') +
@@ -424,7 +568,7 @@
   /* ============================== Rendu / routage ============================== */
   var ROUTES = [
     [/^\/$/, 'home'], [/^\/stock$/, 'stock'], [/^\/mouvement$/, 'move'], [/^\/alertes$/, 'alerts'], [/^\/courses$/, 'courses'],
-    [/^\/plus$/, 'more'], [/^\/emplacement\/(.+)$/, 'place'], [/^\/aliment\/(.+)$/, 'food'], [/^\/historique(?:\/(.+))?$/, 'history']
+    [/^\/plus$/, 'more'], [/^\/synthese$/, 'synth'], [/^\/emplacement\/(.+)$/, 'place'], [/^\/aliment\/(.+)$/, 'food'], [/^\/historique(?:\/(.+))?$/, 'history']
   ];
   var memHash = null, navStack = [];
   function curHash() { return memHash !== null ? memHash : (location.hash.replace(/^#/, '') || '/'); }
@@ -449,14 +593,14 @@
     }
     return { name: 'home', arg: '', params: params };
   }
-  var TABS = [['home', 'Accueil', 'home', '#/'], ['stock', 'Stock', 'list', '#/stock'], ['fab'], ['alerts', 'Alertes', 'bell', '#/alertes'], ['more', 'Plus', 'dots', '#/plus']];
+  var TABS = [['home', 'Accueil', 'home', '#/'], ['stock', 'Stock', 'list', '#/stock'], ['fab'], ['courses', 'Courses', 'basket', '#/courses'], ['more', 'Plus', 'dots', '#/plus']];
   function buildTabbar() {
     $('#tabbar').innerHTML = TABS.map(function (t) {
       if (t[0] === 'fab') return '<a class="fab" href="#/mouvement" aria-label="Enregistrer un mouvement">' + ico('snow') + '</a>';
       return '<a class="tab" data-tab="' + t[0] + '" href="' + t[3] + '">' + ico(t[2]) + '<span>' + t[1] + '</span></a>';
     }).join('');
   }
-  var TABMAP = { home: 'home', place: 'home', stock: 'stock', food: 'stock', alerts: 'alerts', courses: 'more', history: 'more', more: 'more' };
+  var TABMAP = { home: 'home', place: 'home', stock: 'stock', food: 'stock', alerts: 'stock', courses: 'courses', history: 'more', more: 'more' };
 
   function render() {
     syncForm();
@@ -464,13 +608,16 @@
     if (!DEMO && !ls.get('cg_token', '')) { html = viewGate(); hideTab = true; }
     else if (!data) { html = loading ? viewLoading() : (loadError ? viewError() : viewLoading()); }
     else {
-      if (r.name === 'stock' && routeChanged) { UI.showAll = !!r.params.all; if (r.params.all === undefined && !r.params.focus) { /* garde les filtres */ } }
+      if (r.name === 'stock' && routeChanged) { UI.showAll = !!r.params.all; UI.low = r.params.low === '1'; }
+      if (r.name === 'alerts' && routeChanged) UI.low = true;
+      if (r.name === 'courses' && routeChanged) UI.cTab = r.params.tab === 'budget' ? 'budget' : 'buy';
+      if (r.name === 'synth' && routeChanged) { UI.synthFrom = r.params.from === 'courses' ? 'courses' : 'more'; UI.year = Number(today().slice(0, 4)); }
       switch (r.name) {
         case 'home': html = viewHome(); break;
-        case 'stock': html = viewStock(r.params); break;
+        case 'stock': case 'alerts': html = viewStock(r.params); break;
         case 'move': if (routeChanged || !F) initForm(r.params); html = viewMove(); hideTab = true; break;
-        case 'alerts': html = viewAlerts(); break;
         case 'courses': html = viewCourses(); break;
+        case 'synth': html = viewSynth(); break;
         case 'more': html = viewMore(); break;
         case 'place': html = viewPlace(r.arg); break;
         case 'food': html = viewFood(r.arg); break;
@@ -482,7 +629,8 @@
     app.className = hideTab ? 'notab' : '';
     app.innerHTML = html;
     $('#tabbar').classList.toggle('hide', hideTab);
-    $$('#tabbar .tab').forEach(function (t) { t.classList.toggle('on', t.dataset.tab === TABMAP[r.name]); });
+    var activeTab = r.name === 'synth' ? (UI.synthFrom === 'courses' ? 'courses' : 'more') : TABMAP[r.name];
+    $$('#tabbar .tab').forEach(function (t) { t.classList.toggle('on', t.dataset.tab === activeTab); });
     if (routeChanged) { window.scrollTo(0, 0); }
     if (r.name === 'stock' && routeChanged && r.params.focus) { var q = $('#stock-q'); if (q) q.focus(); }
     routeChanged = false;
@@ -505,6 +653,29 @@
     var act = t.dataset.act;
     switch (act) {
       case 'back': goBack(); break;
+      case 'setlow': UI.low = t.dataset.low === '1'; render(); break;
+      case 'ctab': UI.cTab = t.dataset.tab; render(); break;
+      case 'monthprev': UI.month = shiftMonth(UI.month || curMonth(), -1); render(); break;
+      case 'monthnext': if ((UI.month || curMonth()) < curMonth()) { UI.month = shiftMonth(UI.month || curMonth(), 1); render(); } break;
+      case 'yearprev': UI.year = (UI.year || Number(today().slice(0, 4))) - 1; render(); break;
+      case 'yearnext': if ((UI.year || 0) < Number(today().slice(0, 4))) { UI.year += 1; render(); } break;
+      case 'expense-add': openExpense(null); break;
+      case 'expense-edit': { var ed = depList().filter(function (x) { return x.id === t.dataset.id; })[0]; if (ed) openExpense(ed); break; }
+      case 'expense-save': saveExpense(); break;
+      case 'expense-del': {
+        var dd = depList().filter(function (x) { return x.id === EXP.id; })[0]; if (!dd) break;
+        confirmSheet('Supprimer cette dépense ?', (dd.magasin || 'Courses') + ' · ' + eur(dd.total) + ' · ' + fmtDate(dd.date), 'Supprimer', true).then(function (ok) {
+          if (!ok) return;
+          safe(function () { return write('deleteDepense', { id: dd.id }); }).then(function () { render(); toast('Dépense supprimée'); });
+        }); break; }
+      case 'setbudget': openBudget(); break;
+      case 'budget-save': {
+        var bv = pnum($('#x-budget').value), bb = $('#x-save'); bb.disabled = true;
+        write('setBudget', { budget: bv }).then(function () { closeSheetSilent(); render(); toast('Budget enregistré ✓'); }).catch(function (e) { bb.disabled = false; var er = $('#x-err'); er.textContent = e.message; er.hidden = false; });
+        break; }
+      case 'pickfood': syncForm(); F.aliment = t.dataset.nom; F.q = ''; prefillFromAliment(); $('#move-form').innerHTML = moveFields(); break;
+      case 'createfood': { syncForm(); var nn = F.q.trim(); F.aliment = '__new__'; F.nom = nn.charAt(0).toUpperCase() + nn.slice(1); F.q = ''; $('#move-form').innerHTML = moveFields(); break; }
+      case 'changefood': syncForm(); F.aliment = ''; F.nom = ''; F.cat = ''; F.q = ''; $('#move-form').innerHTML = moveFields(); { var fs = $('#f-search'); if (fs) fs.focus(); } break;
       case 'settype': syncForm(); F.type = t.dataset.type; F.aliment = (F.type === 'Retrait' && F.aliment === '__new__') ? '' : F.aliment;
         if (F.type === 'Retrait') { var a0 = findAl(F.aliment); if (a0 && !inStock(a0)) F.aliment = ''; }
         prefillFromAliment(); $('#move-form').innerHTML = moveFields(); break;
@@ -573,6 +744,15 @@
       var n = stockItems().length; $('#stock-count').textContent = n + ' résultat' + (n > 1 ? 's' : '');
     }
     if (t.id === 'f-note') $('#f-count').textContent = t.value.length;
+    if (t.id === 'f-search') { F.q = t.value; $('#f-sugs').innerHTML = sugsHtml(); }
+    if (t.dataset && t.dataset.person) updateExpTotal();
+  });
+  document.addEventListener('focusin', function (ev) { var t = ev.target; if (t.dataset && t.dataset.person) { try { t.select(); } catch (e) {} } });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' && ev.target.id === 'f-search') {
+      ev.preventDefault();
+      var b = $('#f-sugs button'); if (b) b.click();
+    }
   });
 
   document.addEventListener('change', function (ev) {
