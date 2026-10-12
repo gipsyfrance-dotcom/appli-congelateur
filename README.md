@@ -6,12 +6,14 @@ Remplace la version AppSheet. Le Google Sheet « Inventaire Congélateur » rest
 
 | Fichier | Rôle |
 |---|---|
-| `index.html`, `style.css`, `app.js` | L'appli (accueil, stock, mouvement, alertes, courses, fiche aliment, historique) |
+| `index.html`, `style.css`, `app.js` | L'appli (accueil, stock avec filtre « stock faible », mouvement, courses, dépenses et budget, synthèse, catégories, fiche aliment, historique) |
 | `demo.js` | Mode démo (données fictives) tant que `config.js` est vide |
 | `config.js` | Seul réglage : l'adresse du script Google (`API_URL`) |
 | `apps-script/Code.gs` | L'API : lit et écrit dans le Sheet |
 | `apps-script/appsscript.json` | Réglages du script (fuseau Paris, accès web) |
-| `manifest.webmanifest`, `icon*.png/svg` | Installation sur l'écran d'accueil du téléphone |
+| `manifest.webmanifest`, `icon*.png/svg` | Installation sur l'écran d'accueil du téléphone (`icon-180.png` = icône iPhone, opaque ; `icon-192/512.png` = Android) |
+
+Onglets du Google Sheet : `Emplacements`, `Categories`, `Aliments`, `Mouvements`, `Courses`, `Depenses` (créé automatiquement).
 
 **Tester sans rien brancher :** ouvrir `index.html` dans un navigateur → mode démo.
 
@@ -23,6 +25,8 @@ Remplace la version AppSheet. Le Google Sheet « Inventaire Congélateur » rest
 4. **GitHub** — créer un dépôt, y mettre tous les fichiers sauf `apps-script/` (facultatif), coller l'adresse `/exec` dans `config.js`, activer Pages (Settings → Pages → branche `main`, dossier `/root`).
 5. Sur chaque téléphone : ouvrir l'adresse Pages, saisir le code d'accès une fois, puis « Ajouter à l'écran d'accueil ».
 
+**Mettre à jour une version plus tard :** coller le nouveau `Code.gs` dans Apps Script → Déployer → Gérer les déploiements → crayon → Version : *Nouvelle version* → Déployer (l'adresse `/exec` ne change pas). Côté site : remplacer les fichiers modifiés dans le dépôt GitHub (Add file → Upload files). Sur iPhone, supprimer puis rajouter le raccourci pour changer l'icône.
+
 ## Sécurité (honnêtement)
 
 L'adresse de l'appli est publique, mais les données ne sortent qu'avec le **code d'accès**, qui n'est écrit nulle part dans le dépôt (il est saisi une fois sur chaque téléphone). Niveau de protection adapté à un inventaire de congélateur, pas à des données sensibles.
@@ -31,7 +35,10 @@ L'adresse de l'appli est publique, mais les données ne sortent qu'avec le **cod
 
 - Contenu exact de chaque emplacement (nom + quantité), « Tout retirer » en un geste.
 - Retrait impossible au-delà du stock disponible dans l'emplacement choisi.
-- Nouvel aliment créé directement depuis le formulaire de mouvement.
+- Nouvel aliment créé directement depuis le formulaire de mouvement, avec création d'une nouvelle catégorie si besoin.
+- Écran « Catégories » (menu Plus) : ajouter, renommer (les aliments suivent), supprimer si vide. Noms affichés avec accents.
+- Après « Enregistrer », retour à la page d'où l'on vient ; emplacement « Coffre » proposé par défaut.
+- Dépenses de courses ventilées Sara / Jordana, budget mensuel et synthèse par mois et par année.
 - Alerte stock faible par aliment (interrupteur + seuil), pastille sur l'accueil.
 - Liste de courses : ajout depuis un aliment, anti-doublon, cocher = disparaît (récupérable dans « déjà achetés »).
 - Suppression d'un aliment seulement s'il est à zéro.
