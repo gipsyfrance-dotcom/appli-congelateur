@@ -109,12 +109,18 @@
     if (p.type !== 'Ajout' && p.type !== 'Retrait') throw new Error('Type de mouvement invalide.');
     var q = Number(p.quantite);
     if (!(q > 0)) throw new Error('La quantité doit être supérieure à zéro.');
+    if (db.emplacements.indexOf(p.emplacement) < 0) throw new Error('Choisissez un emplacement.');
     if (p.nouvelAliment) {
       var n = String(p.nouvelAliment.nom || '').trim();
       if (!n) throw new Error("Donnez un nom à l'aliment.");
       if (db.aliments.some(function (a) { return norm(a.nom) === norm(n); })) throw new Error('Cet aliment existe déjà : choisissez-le dans la liste.');
-      if (db.categories.indexOf(p.nouvelAliment.categorie) < 0) throw new Error('Choisissez une catégorie.');
-      db.aliments.push({ nom: n, categorie: p.nouvelAliment.categorie, unite: p.unite || '', alerte: false, seuil: 1, photo: '' });
+      var cn = String(p.nouvelAliment.categorie || '').trim();
+      if (p.nouvelAliment.nouvelleCategorie) {
+        if (!cn) throw new Error('Donnez un nom à la nouvelle catégorie.');
+        var ex = db.categories.filter(function (c) { return norm(c) === norm(cn); })[0];
+        if (ex) cn = ex; else db.categories.push(cn);
+      } else if (db.categories.indexOf(cn) < 0) throw new Error('Choisissez une catégorie.');
+      db.aliments.push({ nom: n, categorie: cn, unite: p.unite || '', alerte: false, seuil: 1, photo: '' });
       p.aliment = n;
     }
     var a = findAl(p.aliment);
@@ -161,6 +167,20 @@
       case 'deleteDepense':
         if (!db.depenses.some(function (x) { return x.id === p.id; })) throw new Error('Dépense introuvable (déjà supprimée ?).');
         db.depenses = db.depenses.filter(function (x) { return x.id !== p.id; }); break;
+      case 'addCategorie': {
+        var nn = String(p.nom || '').trim(); if (!nn) throw new Error('Donnez un nom à la catégorie.');
+        if (db.categories.some(function (c) { return norm(c) === norm(nn); })) throw new Error('Cette catégorie existe déjà.');
+        db.categories.push(nn); break; }
+      case 'renameCategorie': {
+        var old = String(p.ancien || '').trim(), nw = String(p.nouveau || '').trim(); if (!nw) throw new Error('Donnez un nom à la catégorie.');
+        if (db.categories.indexOf(old) < 0) throw new Error('Catégorie introuvable.');
+        if (db.categories.some(function (c) { return c !== old && norm(c) === norm(nw); })) throw new Error('Une autre catégorie porte déjà ce nom.');
+        db.categories = db.categories.map(function (c) { return c === old ? nw : c; });
+        db.aliments.forEach(function (a) { if (a.categorie === old) a.categorie = nw; }); break; }
+      case 'deleteCategorie': {
+        var used = db.aliments.filter(function (a) { return a.categorie === p.nom; }).length;
+        if (used > 0) throw new Error('Cette catégorie contient encore ' + used + ' aliment' + (used > 1 ? 's' : '') + ' : changez-les de catégorie d’abord.');
+        db.categories = db.categories.filter(function (c) { return c !== p.nom; }); break; }
       case 'setBudget': db.budget = Math.max(0, Number(p.budget) || 0); break;
       default: throw new Error('Action inconnue : ' + action);
     }

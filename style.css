@@ -188,6 +188,7 @@ textarea.inp{height:92px;padding:12px 14px;resize:none}
 .menu-row{display:flex;align-items:center;gap:14px;padding:15px 14px;font-weight:700;width:100%;border:0;background:none;text-align:left}
 .menu-row .ic:first-child{color:var(--teal)}
 .menu-row span{flex:1}
+.menu-row .cico{flex:none}
 .menu-row .ic:last-child{color:#a8bfce;width:18px;height:18px}
 .ver{text-align:center;color:var(--ink2);font-size:12px;margin-top:22px}
 .demo-flag{background:#fff6dc;border:1px solid #f5dd9a;color:#7a5a05;border-radius:12px;padding:8px 12px;font-size:13px;font-weight:700;margin-bottom:12px}
@@ -282,3 +283,5 @@ textarea.inp{height:92px;padding:12px 14px;resize:none}
 .trow.mut{color:#a8bfce}
 .trow .tt{font-weight:800}
 .sheet-c{max-height:92vh;overflow-y:auto}
+.menu-row .cico{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:18px}
+.menu-row .cico+span{flex:1}
