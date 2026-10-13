@@ -46,6 +46,9 @@ function doPost(e) {
       case 'addCategorie': addCategorie_(req); break;
       case 'renameCategorie': renameCategorie_(req); break;
       case 'deleteCategorie': deleteCategorie_(req); break;
+      case 'addEmplacement': addEmplacement_(req); break;
+      case 'renameEmplacement': renameEmplacement_(req); break;
+      case 'deleteEmplacement': deleteEmplacement_(req); break;
       default: return json_({ ok: false, error: 'Action inconnue : ' + req.action });
     }
     SpreadsheetApp.flush();
@@ -301,6 +304,52 @@ function deleteCategorie_(p) {
   ct.t.rows.forEach(function (r, i) { if (String(r[ct.c] || '').trim() === nom) row = i + 2; });
   if (row < 0) throw new Error('Catégorie introuvable.');
   ct.t.sh.deleteRow(row);
+}
+
+/* ---------------------------- Emplacements ---------------------------- */
+
+function empTable_() {
+  var t = readTable_(CFG.TABS.emplacements);
+  return { t: t, c: col_(t, ['nom', 'emplacement', 'nomemplacement'], 0) };
+}
+
+function addEmplacement_(p) {
+  var nom = String(p.nom || '').trim();
+  if (!nom) throw new Error('Donnez un nom à l’emplacement.');
+  var et = empTable_();
+  if (et.t.rows.some(function (r) { return normName_(r[et.c]) === normName_(nom); })) throw new Error('Cet emplacement existe déjà.');
+  et.t.sh.getRange(Math.max(et.t.sh.getLastRow(), 1) + 1, et.c + 1).setValue(nom);
+}
+
+function renameEmplacement_(p) {
+  var ancien = String(p.ancien || '').trim(), nouveau = String(p.nouveau || '').trim();
+  if (!nouveau) throw new Error('Donnez un nom à l’emplacement.');
+  var et = empTable_(), row = -1;
+  et.t.rows.forEach(function (r, i) {
+    var v = String(r[et.c] || '').trim();
+    if (v === ancien) row = i + 2;
+    else if (normName_(v) === normName_(nouveau)) throw new Error('Un autre emplacement porte déjà ce nom.');
+  });
+  if (row < 0) throw new Error('Emplacement introuvable.');
+  et.t.sh.getRange(row, et.c + 1).setValue(nouveau);
+  // l'historique des mouvements suit le nouveau nom
+  var mv = readTable_(CFG.TABS.mouvements), mc = col_(mv, ['emplacement']);
+  if (mc >= 0 && mv.rows.length) {
+    var vals = mv.rows.map(function (r) { return [String(r[mc] || '').trim() === ancien ? nouveau : r[mc]]; });
+    mv.sh.getRange(2, mc + 1, vals.length, 1).setValues(vals);
+  }
+}
+
+function deleteEmplacement_(p) {
+  var nom = String(p.nom || '').trim();
+  var st = state_();
+  var used = st.aliments.filter(function (a) { return a.emplacements.some(function (e) { return e.nom === nom && e.qte > 0; }); }).length;
+  if (used > 0) throw new Error('Cet emplacement contient encore ' + used + ' aliment' + (used > 1 ? 's' : '') + ' : retirez-' + (used > 1 ? 'les' : 'le') + ' d’abord.');
+  if (st.emplacements.length <= 1) throw new Error('Gardez au moins un emplacement.');
+  var et = empTable_(), row = -1;
+  et.t.rows.forEach(function (r, i) { if (String(r[et.c] || '').trim() === nom) row = i + 2; });
+  if (row < 0) throw new Error('Emplacement introuvable.');
+  et.t.sh.deleteRow(row);
 }
 
 function clearStock_(p) {
