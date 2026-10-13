@@ -1,12 +1,12 @@
 {
-  "name": "Mon congélateur",
-  "short_name": "Congélateur",
-  "description": "Le stock de nos congélateurs, simple et partagé.",
+  "name": "Mon garde-manger",
+  "short_name": "Garde-manger",
+  "description": "Le stock de notre maison (congélateur, frigo, placards), simple et partagé.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#e3f2fb",
-  "theme_color": "#e3f2fb",
+  "background_color": "#eef3ec",
+  "theme_color": "#eef3ec",
   "lang": "fr",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },

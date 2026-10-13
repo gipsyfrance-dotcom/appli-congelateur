@@ -47,7 +47,7 @@
   var UNITES = ['portions', 'sachets', 'pièces', 'boîtes', 'barquettes', 'plats', 'plaquettes', 'bocaux', 'bouteilles', 'g', 'kg', 'L'];
 
   var P = {
-    snow: '<path d="M12 2v20M3.34 7l17.32 10M3.34 17 20.66 7M9.5 3.5 12 6l2.5-2.5M9.5 20.5 12 18l2.5 2.5M3 10.2l3.4.8-.9 3.3M21 13.8l-3.4-.8.9-3.3M3 13.8l3.4-.8-.9-3.3M21 10.2l-3.4.8.9 3.3"/>',
+    snow: '<path d="M3 11 12 4l9 7"/><path d="M5 9.5V20h14V9.5"/><path d="M8 17h8"/><path d="M9 17v-3.5h2V17M13 17v-2.5h2.2V17"/>',
     home: '<path d="M3 11 12 3l9 8v10h-6v-6H9v6H3V11z"/>',
     list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
     bell: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4l2-2zM10 21h4"/>',
@@ -59,7 +59,7 @@
     basket: '<path d="M3 9h18l-2 11H5L3 9zM8 9l4-6 4 6"/>',
     check: '<path d="M5 12l5 5 9-10"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
     filter: '<path d="M3 6h18M6 12h12M10 18h4"/>',
-    chest: '<rect x="3" y="7" width="18" height="12" rx="2.5"/><path d="M3 12h18M10 9.5h4"/>',
+    chest: '<path d="M3 11 12 4l9 7"/><path d="M5 9.5V20h14V9.5"/><path d="M8 17h8"/><path d="M9 17v-3.5h2V17M13 17v-2.5h2.2V17"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     refresh: '<path d="M20 11a8 8 0 0 0-14-4M4 4v4h4M4 13a8 8 0 0 0 14 4M20 20v-4h-4"/>',
     tag: '<path d="M3 12V4h8l10 10-8 8L3 12z"/><circle cx="7.5" cy="8.5" r="1.2"/>',
@@ -71,14 +71,7 @@
   };
   var ico = function (n, c) { return '<svg class="ic ' + (c || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + P[n] + '</svg>'; };
 
-  var SCENE = '<svg class="scene-svg" viewBox="0 0 320 104" preserveAspectRatio="xMinYMax slice" aria-hidden="true">' +
-    '<path d="M0 104V64l46-30 40 26 32-20 48 34 44-26 110 46v10z" fill="#d6eaf6"/>' +
-    '<path d="M0 104V84l56-14 54 12 64-16 74 16 72-10v32z" fill="#e8f3fa"/>' +
-    '<g fill="#a9cfe3"><path d="M14 98l10-36 10 36z"/><path d="M30 98l8-28 8 28z"/><path d="M150 98l9-30 9 30z"/><path d="M166 98l7-24 7 24z"/></g>' +
-    '<g fill="#fff" stroke="#bcd9ea" stroke-width="1"><rect x="62" y="70" width="44" height="30" rx="2"/></g>' +
-    '<path d="M56 72l28-24 28 24z" fill="#8fb9d3"/><rect x="78" y="82" width="12" height="18" fill="#8fb9d3"/>' +
-    '<rect x="64" y="78" width="9" height="9" fill="#cfe6f4"/><rect x="95" y="78" width="9" height="9" fill="#cfe6f4"/>' +
-    '</svg>';
+  var SCENE = '<svg class="scene-svg" viewBox="0 0 320 104" preserveAspectRatio="xMinYMax slice" aria-hidden="true"><rect x="0" y="92" width="320" height="12" fill="#e6ebe2"/><rect x="0" y="88" width="150" height="5" rx="2" fill="#c9b79c"/><rect x="10" y="55" width="13" height="6" rx="1.5" fill="#9cbfa5"/><rect x="8" y="60" width="17" height="28" rx="5" fill="#cfdcc9"/><rect x="11" y="70.64" width="11" height="8.4" rx="2" fill="#fff" opacity=".8"/><rect x="30" y="49" width="11" height="6" rx="1.5" fill="#c9a77e"/><rect x="28" y="54" width="15" height="34" rx="5" fill="#ead9bf"/><rect x="31" y="66.92" width="9" height="10.2" rx="2" fill="#fff" opacity=".8"/><rect x="47" y="71" width="8" height="4" rx="2" fill="#cf8c68"/><rect x="89" y="71" width="8" height="4" rx="2" fill="#cf8c68"/><rect x="52" y="64" width="40" height="24" rx="5" fill="#e4a98a"/><path d="M50 64a22 11 0 0 1 44 0z" fill="#cf8c68"/><circle cx="72" cy="51" r="3" fill="#e4a98a"/><path d="M58 74h28" stroke="#fff" stroke-opacity=".6" stroke-width="2" stroke-linecap="round"/><path d="M60 40c-4-5 4-7 0-12M67 42c-4-5 4-7 0-12M74 40c-4-5 4-7 0-12" fill="none" stroke="#cbd8cd" stroke-width="2" stroke-linecap="round"/><ellipse cx="122" cy="85" rx="22" ry="4.5" fill="#fff" stroke="#d9e2d8"/><ellipse cx="122" cy="84" rx="14" ry="2.6" fill="#f1f4ee"/><path d="M109 83c1-10 8-13 13-13s12 3 13 13z" fill="#e6b27a"/><circle cx="117" cy="77" r="2.6" fill="#8fb08a"/><circle cx="127" cy="78" r="2.2" fill="#8fb08a"/><rect x="132" y="72" width="14" height="16" rx="3" fill="#c9b79c"/><path d="M139 72c-2-10-8-14-14-15 2 7 7 12 14 15zM139 72c1-12 6-17 12-19-1 9-5 15-12 19z" fill="#7fa38a"/></svg>';
 
   /* ============================== État ============================== */
   var data = ls.get('cg_data', null);
@@ -198,13 +191,13 @@
   }
 
   /* ============================== Vues ============================== */
-  function viewLoading() { return header('Mon congélateur', 'Chargement…') + '<div class="skel"></div><div class="skel"></div><div class="skel"></div>'; }
+  function viewLoading() { return header('Mon garde-manger', 'Chargement…') + '<div class="skel"></div><div class="skel"></div><div class="skel"></div>'; }
   function viewError() {
     return header('Oups', 'Impossible de charger les données') + '<p class="err">' + esc(loadError || 'Erreur inconnue.') + '</p><button class="btn" data-act="refresh">' + ico('refresh') + ' Réessayer</button>';
   }
   var gateError = '';
   function viewGate() {
-    return '<header class="hero">' + ico('snow', 'hero-ic') + '<div><h1>Mon congélateur</h1><p>Première connexion</p></div></header>' +
+    return '<header class="hero">' + ico('snow', 'hero-ic') + '<div><h1>Mon garde-manger</h1><p>Première connexion</p></div></header>' +
       '<form data-form="token" class="card pad"><div class="field"><label for="g-code">Code d’accès</label>' +
       '<input class="inp" id="g-code" type="password" autocomplete="current-password" placeholder="Le code choisi dans Apps Script" required></div>' +
       (gateError ? '<p class="err">' + esc(gateError) + '</p>' : '') +
@@ -224,7 +217,7 @@
     }).join('');
     return (DEMO ? '<div class="demo-flag">Mode démo : données fictives, enregistrées seulement dans ce navigateur.</div>' : '') +
       (loadError && data ? '<div class="offline">Hors connexion : affichage de la dernière version enregistrée.</div>' : '') +
-      '<header class="hero">' + ico('snow', 'hero-ic') + '<div><h1>Mes congélateurs</h1><p>Tout votre stock au bout des doigts</p></div></header>' +
+      '<header class="hero">' + ico('snow', 'hero-ic') + '<div><h1>Mon garde-manger</h1><p>Tout votre stock au bout des doigts</p></div></header>' +
       '<a class="search" href="#/stock?focus=1">' + ico('search') + '<span>Rechercher un aliment</span></a>' +
       '<div class="scene">' + SCENE + '<p class="hand">De bons repas<br>toute l’année ! ♡</p></div>' +
       '<div class="bigs one">' +
@@ -234,7 +227,7 @@
       '<a class="tile amber" href="#/stock?low=1">' + (low ? '<span class="badge">' + low + '</span>' : '') + '<span class="ti">' + ico('alert') + '</span><b>Stock faible</b><small>À surveiller</small></a>' +
       '<a class="tile lav" href="#/courses">' + (buy ? '<span class="badge">' + buy + '</span>' : '') + '<span class="ti">' + ico('basket') + '</span><b>À acheter</b><small>Ma liste</small></a>' +
       '<a class="tile mint" href="#/courses?tab=budget"><span class="ti">' + ico('euro') + '</span><b>Budget courses</b><small>' + esc(budgetTileText()) + '</small></a></div>' +
-      '<h2 class="sec">' + ico('chest') + 'Mes congélateurs</h2><p class="sub">' + data.emplacements.length + ' espaces, un seul objectif : se régaler !</p>' +
+      '<h2 class="sec">' + ico('chest') + 'Mes emplacements</h2><p class="sub">' + data.emplacements.length + ' espaces, un seul objectif : se régaler !</p>' +
       '<div class="card list">' + places + '</div>';
   }
 
@@ -470,6 +463,26 @@
       '<p class="err" id="x-err" hidden></p><button class="btn" data-act="cat-save" id="x-save">Enregistrer</button>' +
       (nom ? (n ? '<p class="hint" style="margin-top:10px">Pour la supprimer, changez d’abord ses ' + n + ' aliment(s) de catégorie.</p>' : '<button class="btn danger sm" style="margin-top:10px" data-act="cat-del">' + ico('trash') + 'Supprimer cette catégorie</button>') : ''));
   }
+  /* ----- emplacements ----- */
+  var EMPE = { nom: null };
+  function empCount(n) { return data.aliments.filter(function (a) { return a.emplacements.some(function (e) { return e.nom === n && e.qte > 0; }); }).length; }
+  function viewEmps() {
+    var rows = data.emplacements.map(function (n) {
+      var c = empCount(n);
+      return '<button class="menu-row" data-act="emp-edit" data-emp="' + esc(n) + '">' + ico('chest') + '<span>' + esc(n) + '<small style="display:block;color:var(--ink2);font-weight:400">' + (c ? c + ' aliment' + (c > 1 ? 's' : '') : 'vide') + '</small></span>' + ico('chev') + '</button>';
+    }).join('');
+    return header('Emplacements', 'Modifier, ajouter ou retirer', { back: true }) +
+      '<button class="btn" data-act="emp-add" style="margin-bottom:14px">' + ico('plus') + 'Ajouter un emplacement</button>' +
+      '<div class="card list">' + rows + '</div>';
+  }
+  function openEmp(nom) {
+    EMPE.nom = nom || null;
+    var n = nom ? empCount(nom) : 0;
+    openSheet('<h3>' + (nom ? 'Modifier l’emplacement' : 'Nouvel emplacement') + '</h3>' +
+      '<div class="field"><label for="x-emp-nom">Nom</label><input class="inp" id="x-emp-nom" maxlength="40" autocomplete="off" placeholder="Ex. Frigo du garage" value="' + esc(nom || '') + '"></div>' +
+      '<p class="err" id="x-err" hidden></p><button class="btn" data-act="emp-save" id="x-save">Enregistrer</button>' +
+      (nom ? (n ? '<p class="hint" style="margin-top:10px">Pour le supprimer, retirez d’abord ses ' + n + ' aliment' + (n > 1 ? 's' : '') + '.</p>' : '<button class="btn danger sm" style="margin-top:10px" data-act="emp-del">' + ico('trash') + 'Supprimer cet emplacement</button>') + '<p class="hint" style="margin-top:10px">Renommer met à jour tout l’historique : rien n’est perdu.</p>' : ''));
+  }
   function viewMore() {
     var pers = data.personnes.map(function (p) { return '<button type="button" class="' + (me === p ? 'on add' : '') + '" data-act="setme" data-p="' + esc(p) + '">' + esc(p) + '</button>'; }).join('');
     return header('Plus', 'Réglages et raccourcis') +
@@ -477,6 +490,7 @@
       '<div class="card list">' +
       '<a class="menu-row" href="#/synthese">' + ico('chart') + '<span>Synthèse des dépenses</span>' + ico('chev') + '</a>' +
       '<button class="menu-row" data-act="setbudget">' + ico('euro') + '<span>Budget mensuel des courses</span>' + ico('chev') + '</button>' +
+      '<a class="menu-row" href="#/emplacements">' + ico('chest') + '<span>Emplacements</span>' + ico('chev') + '</a>' +
       '<a class="menu-row" href="#/categories">' + ico('tag') + '<span>Catégories</span>' + ico('chev') + '</a>' +
       '<a class="menu-row" href="#/courses">' + ico('basket') + '<span>Liste de courses</span>' + ico('chev') + '</a>' +
       '<a class="menu-row" href="#/historique">' + ico('clock') + '<span>Historique des mouvements</span>' + ico('chev') + '</a>' +
@@ -484,11 +498,11 @@
       '<button class="menu-row" data-act="refresh">' + ico('refresh') + '<span>Actualiser les données</span>' + ico('chev') + '</button>' +
       (DEMO ? '<button class="menu-row" data-act="demo-reset">' + ico('trash') + '<span>Réinitialiser la démo</span>' + ico('chev') + '</button>'
         : '<button class="menu-row" data-act="change-token">' + ico('key') + '<span>Changer le code d’accès</span>' + ico('chev') + '</button>') + '</div>' +
-      '<p class="ver">Mon congélateur · ' + (DEMO ? 'mode démo' : 'connecté au Google Sheet') + '</p>';
+      '<p class="ver">Mon garde-manger · ' + (DEMO ? 'mode démo' : 'connecté au Google Sheet') + '</p>';
   }
 
   /* ----- formulaire de mouvement ----- */
-  function defaultEmp() { return data.emplacements.filter(function (n) { return norm(n) === 'coffre'; })[0] || ''; }
+  function defaultEmp() { return data.emplacements[0] || ''; }
   function initForm(p) {
     F = { type: p.type === 'Retrait' ? 'Retrait' : 'Ajout', aliment: p.aliment || '', q: '', nom: '', cat: '', newcat: '', qte: '', unite: '', emp: p.emp || defaultEmp(), date: today(), pers: me || '', note: '' };
     prefillFromAliment();
@@ -594,7 +608,7 @@
   /* ============================== Rendu / routage ============================== */
   var ROUTES = [
     [/^\/$/, 'home'], [/^\/stock$/, 'stock'], [/^\/mouvement$/, 'move'], [/^\/alertes$/, 'alerts'], [/^\/courses$/, 'courses'],
-    [/^\/plus$/, 'more'], [/^\/categories$/, 'cats'], [/^\/synthese$/, 'synth'], [/^\/emplacement\/(.+)$/, 'place'], [/^\/aliment\/(.+)$/, 'food'], [/^\/historique(?:\/(.+))?$/, 'history']
+    [/^\/plus$/, 'more'], [/^\/categories$/, 'cats'], [/^\/emplacements$/, 'emps'], [/^\/synthese$/, 'synth'], [/^\/emplacement\/(.+)$/, 'place'], [/^\/aliment\/(.+)$/, 'food'], [/^\/historique(?:\/(.+))?$/, 'history']
   ];
   var memHash = null, navStack = [];
   function curHash() { return memHash !== null ? memHash : (location.hash.replace(/^#/, '') || '/'); }
@@ -626,7 +640,7 @@
       return '<a class="tab" data-tab="' + t[0] + '" href="' + t[3] + '">' + ico(t[2]) + '<span>' + t[1] + '</span></a>';
     }).join('');
   }
-  var TABMAP = { home: 'home', place: 'home', stock: 'stock', food: 'stock', alerts: 'stock', courses: 'courses', history: 'more', more: 'more', cats: 'more' };
+  var TABMAP = { home: 'home', place: 'home', stock: 'stock', food: 'stock', alerts: 'stock', courses: 'courses', history: 'more', more: 'more', cats: 'more', emps: 'more' };
 
   function render() {
     syncForm();
@@ -646,6 +660,7 @@
         case 'synth': html = viewSynth(); break;
         case 'more': html = viewMore(); break;
         case 'cats': html = viewCats(); break;
+        case 'emps': html = viewEmps(); break;
         case 'place': html = viewPlace(r.arg); break;
         case 'food': html = viewFood(r.arg); break;
         case 'history': html = viewHistory(r.arg); break;
@@ -696,6 +711,23 @@
           safe(function () { return write('deleteDepense', { id: dd.id }); }).then(function () { render(); toast('Dépense supprimée'); });
         }); break; }
       case 'setbudget': openBudget(); break;
+      case 'emp-add': openEmp(null); break;
+      case 'emp-edit': openEmp(t.dataset.emp); break;
+      case 'emp-save': {
+        var en = $('#x-emp-nom').value.trim(), eb = $('#x-save'), ee = $('#x-err');
+        if (!en) { ee.textContent = 'Donnez un nom à l’emplacement.'; ee.hidden = false; break; }
+        eb.disabled = true;
+        var wasEdit = !!EMPE.nom;
+        write(wasEdit ? 'renameEmplacement' : 'addEmplacement', wasEdit ? { ancien: EMPE.nom, nouveau: en } : { nom: en })
+          .then(function () { closeSheetSilent(); render(); toast(wasEdit ? 'Emplacement modifié ✓' : 'Emplacement ajouté ✓'); })
+          .catch(function (e) { eb.disabled = false; ee.textContent = e.message; ee.hidden = false; });
+        break; }
+      case 'emp-del': {
+        var de = EMPE.nom;
+        confirmSheet('Supprimer cet emplacement ?', '« ' + de + ' » sera retiré de la liste.', 'Supprimer', true).then(function (ok) {
+          if (!ok) return;
+          safe(function () { return write('deleteEmplacement', { nom: de }); }).then(function () { render(); toast('Emplacement supprimé'); });
+        }); break; }
       case 'cat-add': openCat(null); break;
       case 'cat-edit': openCat(t.dataset.cat); break;
       case 'cat-save': {

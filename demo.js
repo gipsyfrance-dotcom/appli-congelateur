@@ -181,6 +181,21 @@
         var used = db.aliments.filter(function (a) { return a.categorie === p.nom; }).length;
         if (used > 0) throw new Error('Cette catégorie contient encore ' + used + ' aliment' + (used > 1 ? 's' : '') + ' : changez-les de catégorie d’abord.');
         db.categories = db.categories.filter(function (c) { return c !== p.nom; }); break; }
+      case 'addEmplacement': {
+        var en = String(p.nom || '').trim(); if (!en) throw new Error('Donnez un nom à l’emplacement.');
+        if (db.emplacements.some(function (c) { return norm(c) === norm(en); })) throw new Error('Cet emplacement existe déjà.');
+        db.emplacements.push(en); break; }
+      case 'renameEmplacement': {
+        var eo = String(p.ancien || '').trim(), ew = String(p.nouveau || '').trim(); if (!ew) throw new Error('Donnez un nom à l’emplacement.');
+        if (db.emplacements.indexOf(eo) < 0) throw new Error('Emplacement introuvable.');
+        if (db.emplacements.some(function (c) { return c !== eo && norm(c) === norm(ew); })) throw new Error('Un autre emplacement porte déjà ce nom.');
+        db.emplacements = db.emplacements.map(function (c) { return c === eo ? ew : c; });
+        db.mouvements.forEach(function (m) { if (m.emplacement === eo) m.emplacement = ew; }); break; }
+      case 'deleteEmplacement': {
+        var cur = compute(), eu = cur.aliments.filter(function (a) { return a.emplacements.some(function (e) { return e.nom === p.nom && e.qte > 0; }); }).length;
+        if (eu > 0) throw new Error('Cet emplacement contient encore ' + eu + ' aliment' + (eu > 1 ? 's' : '') + ' : retirez-' + (eu > 1 ? 'les' : 'le') + ' d’abord.');
+        if (db.emplacements.length <= 1) throw new Error('Gardez au moins un emplacement.');
+        db.emplacements = db.emplacements.filter(function (c) { return c !== p.nom; }); break; }
       case 'setBudget': db.budget = Math.max(0, Number(p.budget) || 0); break;
       default: throw new Error('Action inconnue : ' + action);
     }

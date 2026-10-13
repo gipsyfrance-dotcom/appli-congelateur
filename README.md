@@ -1,4 +1,4 @@
-# Mon congélateur — appli web (Google Sheet + Apps Script + GitHub Pages)
+# Mon garde-manger — appli web (Google Sheet + Apps Script + GitHub Pages)
 
 Remplace la version AppSheet. Le Google Sheet « Inventaire Congélateur » reste la base de données ; le stock est toujours **recalculé** à partir de l'onglet Mouvements (rien à saisir à la main dans le Sheet).
 
@@ -36,6 +36,7 @@ L'adresse de l'appli est publique, mais les données ne sortent qu'avec le **cod
 - Contenu exact de chaque emplacement (nom + quantité), « Tout retirer » en un geste.
 - Retrait impossible au-delà du stock disponible dans l'emplacement choisi.
 - Nouvel aliment créé directement depuis le formulaire de mouvement, avec création d'une nouvelle catégorie si besoin.
+- Écran « Emplacements » (menu Plus) : congélateur, frigo du garage, placards… ajouter, renommer (l'historique suit), supprimer si vide.
 - Écran « Catégories » (menu Plus) : ajouter, renommer (les aliments suivent), supprimer si vide. Noms affichés avec accents.
 - Après « Enregistrer », retour à la page d'où l'on vient ; emplacement « Coffre » proposé par défaut.
 - Dépenses de courses ventilées Sara / Jordana, budget mensuel et synthèse par mois et par année.
