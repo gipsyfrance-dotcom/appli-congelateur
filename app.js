@@ -39,10 +39,26 @@
 
   var CAT = {
     'VIANDE': ['🥩', '#fde4e1'], 'FROMAGE': ['🧀', '#fdf0c9'], 'POISSON': ['🐟', '#dcecfb'], 'DESSERT': ['🍰', '#fbe3f0'],
-    'PLAT CUISINE': ['🍲', '#fde9d4'], 'LEGUMES': ['🥦', '#dff3dc'], 'INDETERMINE': ['📦', '#e8edf2'], 'PATE ET BASES': ['🥟', '#f6ecd6'],
+    'PLAT CUISINE': ['🍲', '#fde9d4'], 'LEGUMES': ['🥦', '#dff3dc'], 'INDETERMINE': ['📦', '#e8edf2'], 'PATE ET BASES': ['🥧', '#f6ecd6'],
     'FRUITS': ['🍓', '#fde0e4'], 'LAITAGE': ['🥛', '#eaf1fb'], 'BOULANGERIE': ['🥖', '#f8e8cf'], 'MEDICAL': ['🧊', '#e1f1f8']
   };
-  var catInfo = function (c) { return CAT[norm(c).toUpperCase()] || ['🍽️', '#e8f1f7']; };
+  var CAT_KW = [
+    [/pasta|spaghetti|nouille|pates seches/, ['🍝', '#f6ecd6']], [/pate|base/, ['🥧', '#f6ecd6']], [/epice|aromate|herbe|assaisonnement/, ['🌶️', '#fbe5d6']], [/condiment|sauce|moutarde|mayo|ketchup/, ['🫙', '#f3ead2']],
+    [/conserve|bocal/, ['🥫', '#f6e3d9']], [/riz|cereale|feculent|semoule|legumineuse|lentille/, ['🍚', '#f3efe2']], [/farine|levure|patisserie/, ['🌾', '#f6ecd6']],
+    [/sucre|miel|confiture|pate a tartiner/, ['🍯', '#fdf0c9']], [/chocolat|gourmandise|bonbon/, ['🍫', '#f1e2d8']], [/biscuit|gateau sec|apero|chips/, ['🍪', '#f6ead7']],
+    [/petit.?dej|cafe|the|tisane/, ['☕', '#efe6dc']], [/boisson|jus|soda|eau/, ['🧃', '#e2f0f6']], [/alcool|vin|biere|spiritueux/, ['🍷', '#f3dfe6']],
+    [/huile|vinaigre/, ['🫒', '#eef0d8']], [/oeuf/, ['🥚', '#fbf3df']], [/glace|sorbet/, ['🍨', '#fbe3f0']], [/surgele/, ['🧊', '#e1f1f8']],
+    [/viande|volaille|poulet|boeuf|porc/, ['🥩', '#fde4e1']], [/poisson|fruit de mer/, ['🐟', '#dcecfb']], [/fromage/, ['🧀', '#fdf0c9']],
+    [/legume/, ['🥦', '#dff3dc']], [/fruit/, ['🍓', '#fde0e4']], [/lait|yaourt|cremerie/, ['🥛', '#eaf1fb']], [/pain|boulangerie|viennoiserie/, ['🥖', '#f8e8cf']],
+    [/dessert/, ['🍰', '#fbe3f0']], [/plat|cuisine|reste/, ['🍲', '#fde9d4']], [/bebe/, ['🍼', '#eaf1fb']], [/animal|chat|chien/, ['🐾', '#efe9e1']],
+    [/hygiene|toilette/, ['🧴', '#e6eef6']], [/entretien|menage|lessive/, ['🧽', '#e3f1ec']], [/medic|pharma|sante/, ['💊', '#e1f1f8']]
+  ];
+  var catInfo = function (c) {
+    var k = norm(c).toUpperCase(); if (CAT[k]) return CAT[k];
+    var n = norm(c);
+    for (var i = 0; i < CAT_KW.length; i++) if (CAT_KW[i][0].test(n)) return CAT_KW[i][1];
+    return ['🍽️', '#e8f1f7'];
+  };
   var niceCat = function (c) { c = String(c || '').trim().toLowerCase(); return c.charAt(0).toUpperCase() + c.slice(1); };
   var UNITES = ['portions', 'sachets', 'pièces', 'boîtes', 'barquettes', 'plats', 'plaquettes', 'bocaux', 'pots', 'bouteilles', 'g', 'kg', 'L'];
 
@@ -269,11 +285,12 @@
       return '<div class="row">' + '<a href="#/aliment/' + enc(a.nom) + '">' + thumb(a, 'sm') + '</a><div class="row-b"><a class="row-t" style="display:block" href="#/aliment/' + enc(a.nom) + '">' + esc(a.nom) + '</a>' +
         '<div class="chips"><span class="chip">' + esc(qty(e.qte, a.unite)) + '</span></div>' +
         '<div class="mini-actions"><a class="mini" href="#/mouvement?type=Retrait&aliment=' + enc(a.nom) + '&emp=' + enc(nom) + '">Retirer</a>' +
+        (data.emplacements.length > 1 ? '<button class="mini" data-act="move-open" data-nom="' + esc(a.nom) + '" data-emp="' + esc(nom) + '">Déplacer</button>' : '') +
         '<button class="mini red" data-act="clear" data-nom="' + esc(a.nom) + '" data-emp="' + esc(nom) + '">Tout retirer</button></div></div></div>';
     }).join('');
     return header(nom, items.length + ' aliment' + (items.length > 1 ? 's' : '') + ' dans cet emplacement', { back: true }) +
-      (items.length ? '<div class="rows">' + rows + '</div>' : '<div class="empty"><div class="big">❄️</div>Cet emplacement est vide.</div>') +
-      '<div class="btn-row"><a class="btn ghost sm" href="#/mouvement?type=Ajout&emp=' + enc(nom) + '">' + ico('plus') + 'Ajouter ici</a></div>';
+      '<div class="btn-row" style="margin:0 0 14px"><a class="btn sm" style="flex:1" href="#/mouvement?type=Ajout&emp=' + enc(nom) + '">' + ico('plus') + 'Ajouter ici</a></div>' +
+      (items.length ? '<div class="rows">' + rows + '</div>' : '<div class="empty"><div class="big">📦</div>Cet emplacement est vide.</div>');
   }
 
   function notFound() { return header('Introuvable', '', { back: true }) + '<div class="empty"><div class="big">🤔</div>Cet élément n’existe plus.</div>'; }
@@ -284,6 +301,7 @@
     var where = emps.length ? '<div class="card list">' + emps.map(function (e) {
       return '<div class="place-row" style="flex-wrap:wrap">' + ico('chest') + '<b>' + esc(e.nom) + '</b><span class="chip">' + esc(qty(e.qte, a.unite)) + '</span>' +
         '<div class="mini-actions" style="width:100%;margin:2px 0 0 34px"><a class="mini" href="#/mouvement?type=Retrait&aliment=' + enc(a.nom) + '&emp=' + enc(e.nom) + '">Retirer</a>' +
+        (data.emplacements.length > 1 ? '<button class="mini" data-act="move-open" data-nom="' + esc(a.nom) + '" data-emp="' + esc(e.nom) + '">Déplacer</button>' : '') +
         '<button class="mini red" data-act="clear" data-nom="' + esc(a.nom) + '" data-emp="' + esc(e.nom) + '">Tout retirer</button></div></div>';
     }).join('') + '</div>' : '<div class="card pad empty" style="padding:18px">Plus en stock.</div>';
     var seuilUnit = a.unite ? ' ' + unitLabel(2, a.unite) : '';
@@ -354,10 +372,13 @@
       (list.length ? '<div class="card list">' + rows + '</div>' : '<div class="empty"><div class="big">🧾</div>Aucune dépense ce mois-ci.</div>');
   }
 
+  var MIN_YEAR = 2026;
   function viewSynth() {
     var y = UI.year || Number(today().slice(0, 4)), curY = Number(today().slice(0, 4)), curM = Number(today().slice(5, 7));
     var list = depList().filter(function (d) { return Number(d.date.slice(0, 4)) === y; });
-    var tot = sumDep(list), elapsed = y === curY ? curM : 12;
+    var tot = sumDep(list);
+    var firstM = 13; list.forEach(function (d) { var mm = Number(d.date.slice(5, 7)); if (mm < firstM) firstM = mm; });
+    var lastM = y === curY ? curM - 1 : 12, nbM = Math.max(0, lastM - firstM + 1), done = sumDep(list.filter(function (d) { var mm = Number(d.date.slice(5, 7)); return mm >= firstM && mm <= lastM; }));
     var cards = persDep().map(function (p) { return '<div class="card"><small>' + esc(p) + '</small><b>' + esc(eur(tot.by[p])) + '</b></div>'; }).join('');
     var rows = '';
     for (var m = 1; m <= 12; m++) {
@@ -367,10 +388,10 @@
     }
     var cols = 'grid-template-columns:1.05fr ' + persDep().map(function () { return '1fr'; }).join(' ') + ' 1fr';
     return header('Synthèse des dépenses', 'Courses · à titre indicatif', { back: true }) +
-      '<div class="month"><button class="icon-btn" data-act="yearprev" aria-label="Année précédente">' + ico('back') + '</button><b>' + y + '</b>' +
+      '<div class="month"><button class="icon-btn" data-act="yearprev" aria-label="Année précédente"' + (y <= MIN_YEAR ? ' disabled' : '') + '>' + ico('back') + '</button><b>' + y + '</b>' +
       '<button class="icon-btn" data-act="yearnext" aria-label="Année suivante"' + (y >= curY ? ' disabled' : '') + '>' + ico('chev') + '</button></div>' +
       '<div class="card bud"><div class="lbl">Total dépensé en ' + y + '</div><div class="tot">' + esc(eur(tot.total)) + '</div>' +
-      (tot.total > 0 ? '<div class="lbl">soit ' + esc(eur(tot.total / elapsed)) + ' par mois en moyenne</div>' : '') + '</div>' +
+      (nbM > 0 && done.total > 0 ? '<div class="lbl">Moyenne mensuelle ' + y + ' : <b>' + esc(eur(done.total / nbM)) + '</b></div><div class="lbl" style="font-size:12px">sur ' + nbM + ' mois terminé' + (nbM > 1 ? 's' : '') + (y === curY ? ', mois en cours non compté' : '') + '</div>' : '') + '</div>' +
       '<div class="who" style="grid-template-columns:repeat(' + persDep().length + ',1fr)">' + cards + '</div>' +
       '<div class="day">Mois par mois</div><div class="card" style="overflow:hidden">' +
       '<div class="trow head" style="' + cols + '"><span>Mois</span>' + persDep().map(function (p) { return '<span>' + esc(p) + '</span>'; }).join('') + '<span>Total</span></div>' +
@@ -432,7 +453,11 @@
   }
 
   function viewHistory(nom) {
-    var list = data.mouvements.filter(function (m) { return !nom || m.aliment === nom; });
+    var all = data.mouvements.filter(function (m) { return !nom || m.aliment === nom; });
+    var lim = new Date(); lim.setDate(lim.getDate() - 30); lim.setMinutes(lim.getMinutes() - lim.getTimezoneOffset());
+    var limS = lim.toISOString().slice(0, 10);
+    var list = UI.histAll ? all : all.filter(function (m) { return String(m.date) >= limS; });
+    var older = all.length - list.length;
     var html = '', last = '';
     list.forEach(function (m) {
       if (m.date !== last) { html += '<div class="day">' + esc(dayLabel(m.date)) + '</div>'; last = m.date; }
@@ -441,7 +466,10 @@
         '<div><b>' + esc(m.aliment) + '</b> · ' + esc(qty(m.quantite, unit)) + '</div><div class="meta">' + esc(m.emplacement) + (m.personne ? ' · ' + esc(m.personne) : '') + '</div>' +
         (m.note ? '<div class="note">« ' + esc(m.note) + ' »</div>' : '') + '</div></div>';
     });
-    return header('Mouvements', nom || 'Les plus récents en premier', { back: true }) + (list.length ? html : '<div class="empty"><div class="big">🗒️</div>Aucun mouvement enregistré.</div>');
+    return header('Mouvements', (nom ? nom + ' · ' : '') + (UI.histAll ? 'Tout l’historique' : '30 derniers jours'), { back: true }) +
+      (list.length ? html : '<div class="empty"><div class="big">🗒️</div>' + (all.length ? 'Aucun mouvement ces 30 derniers jours.' : 'Aucun mouvement enregistré.') + '</div>') +
+      (older > 0 ? '<button class="more-link" data-act="hist-all">Voir les mouvements plus anciens (' + older + ')</button>' : '') +
+      (UI.histAll && all.length ? '<button class="more-link" data-act="hist-30">Revenir aux 30 derniers jours</button>' : '');
   }
 
   /* ----- catégories ----- */
@@ -651,6 +679,7 @@
       if (r.name === 'stock' && routeChanged) { UI.showAll = !!r.params.all; UI.low = r.params.low === '1'; }
       if (r.name === 'alerts' && routeChanged) UI.low = true;
       if (r.name === 'courses' && routeChanged) UI.cTab = r.params.tab === 'budget' ? 'budget' : 'buy';
+      if (r.name === 'history' && routeChanged) UI.histAll = false;
       if (r.name === 'synth' && routeChanged) { UI.synthFrom = r.params.from === 'courses' ? 'courses' : 'more'; UI.year = Number(today().slice(0, 4)); }
       switch (r.name) {
         case 'home': html = viewHome(); break;
@@ -686,6 +715,34 @@
   });
   function closeSheetSilent() { $('#sheet').classList.remove('open'); sheetResolve = null; }
 
+  /* ----- déplacer un aliment d'un emplacement à un autre ----- */
+  var MV = { nom: '', from: '' };
+  function openMoveSheet(nom, from) {
+    var a = findAl(nom); if (!a) return;
+    var e = a.emplacements.filter(function (x) { return x.nom === from; })[0], dispo = e ? e.qte : 0;
+    var dest = data.emplacements.filter(function (x) { return x !== from; });
+    MV = { nom: nom, from: from, dispo: dispo };
+    openSheet('<h3>Déplacer « ' + esc(nom) + ' »</h3><p class="sub">Depuis : <b>' + esc(from) + '</b> · ' + esc(qty(dispo, a.unite)) + ' en stock</p>' +
+      '<div class="field"><label for="mv-dest">Vers</label><select class="inp" id="mv-dest">' + dest.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field"><label for="mv-q">Quantité à déplacer' + (a.unite ? ' (' + esc(unitLabel(2, a.unite)) + ')' : '') + '</label><input class="inp" id="mv-q" type="text" inputmode="decimal" autocomplete="off" value="' + esc(fmtNum(dispo)) + '"></div>' +
+      '<p class="hint" style="margin:-6px 2px 12px">Par défaut, tout est déplacé.</p><p class="err" id="mv-err" hidden></p>' +
+      '<button class="btn" data-act="move-save" id="mv-save">' + ico('chev') + 'Déplacer</button>' +
+      '<button class="btn ghost sm" style="margin-top:10px" data-act="sheet-cancel">Annuler</button>');
+  }
+  async function saveMoveSheet() {
+    var a = findAl(MV.nom); if (!a) return;
+    var to = $('#mv-dest').value, q = Number(String($('#mv-q').value).replace(',', '.')), box = $('#mv-err');
+    var err = !(q > 0) ? 'Indiquez une quantité.' : q > MV.dispo + 1e-9 ? 'Il n’y en a que ' + qty(MV.dispo, a.unite) + ' dans « ' + MV.from + ' ».' : '';
+    if (err) { box.textContent = err; box.hidden = false; return; }
+    var btn = $('#mv-save'); btn.disabled = true;
+    var base = { aliment: a.nom, quantite: q, unite: a.unite, date: today(), personne: me };
+    try {
+      await write('addMouvement', Object.assign({}, base, { type: 'Retrait', emplacement: MV.from, note: 'Déplacé vers ' + to }));
+      await write('addMouvement', Object.assign({}, base, { type: 'Ajout', emplacement: to, note: 'Déplacé depuis ' + MV.from }));
+      closeSheetSilent(); render(); toast('Déplacé vers « ' + to + ' » ✓');
+    } catch (e) { btn.disabled = false; box.textContent = e.message; box.hidden = false; load(true); }
+  }
+
   async function safe(fn) { try { return await fn(); } catch (e) { toast(e.message || 'Erreur'); load(true); } }
 
   document.addEventListener('click', function (ev) {
@@ -699,7 +756,11 @@
       case 'ctab': UI.cTab = t.dataset.tab; render(); break;
       case 'monthprev': UI.month = shiftMonth(UI.month || curMonth(), -1); render(); break;
       case 'monthnext': if ((UI.month || curMonth()) < curMonth()) { UI.month = shiftMonth(UI.month || curMonth(), 1); render(); } break;
-      case 'yearprev': UI.year = (UI.year || Number(today().slice(0, 4))) - 1; render(); break;
+      case 'yearprev': UI.year = Math.max(MIN_YEAR, (UI.year || Number(today().slice(0, 4))) - 1); render(); break;
+      case 'hist-all': UI.histAll = true; render(); break;
+      case 'hist-30': UI.histAll = false; render(); window.scrollTo(0, 0); break;
+      case 'move-open': openMoveSheet(t.dataset.nom, t.dataset.emp); break;
+      case 'move-save': saveMoveSheet(); break;
       case 'yearnext': if ((UI.year || 0) < Number(today().slice(0, 4))) { UI.year += 1; render(); } break;
       case 'expense-add': openExpense(null); break;
       case 'expense-edit': { var ed = depList().filter(function (x) { return x.id === t.dataset.id; })[0]; if (ed) openExpense(ed); break; }

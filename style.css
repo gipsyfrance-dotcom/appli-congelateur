@@ -5,7 +5,10 @@
   --sky:#dfe9dc; --shadow:0 6px 18px rgba(60,90,70,.10);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0}
+html,body{margin:0;overflow-x:hidden}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+/* iPhone : un champ en dessous de 16px déclenche un zoom automatique qui décale l'écran */
+input,select,textarea,.inp,.search input,.seuil input{font-size:16px !important}
 body{
   font-family:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif; color:var(--ink);
   background:linear-gradient(180deg,#eef3ec 0,#f7f8f4 320px,#faf9f6 100%) fixed; min-height:100vh;
