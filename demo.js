@@ -3,6 +3,7 @@
   'use strict';
   var KEY = 'cg_demo_db_v1';
   var PERSONNES = ['Jordana', 'Sara'];
+  var UNITES = ['portions', 'sachets', 'pièces', 'boîtes', 'barquettes', 'plats', 'plaquettes', 'bocaux', 'pots', 'bouteilles', 'g', 'kg', 'L'];
 
   function today() { return new Date().toISOString().slice(0, 10); }
   function daysAgo(n) { var d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
@@ -42,7 +43,7 @@
         { id: uid(), article: 'Épinards', achete: false, ajoutePar: 'Sara', date: daysAgo(0) }
       ],
       depenses: seedDep(),
-      budget: 450
+      budget: 450, unites: UNITES.slice(), ordres: { emplacements: 'perso', categories: 'perso', unites: 'perso' }
     };
   }
 
@@ -57,7 +58,7 @@
 
   var db;
   function load() {
-    try { var v = localStorage.getItem(KEY); if (v) { var o = JSON.parse(v); if (!o.depenses) { o.depenses = seedDep(); o.budget = 450; } return o; } } catch (e) {}
+    try { var v = localStorage.getItem(KEY); if (v) { var o = JSON.parse(v); if (!o.depenses) { o.depenses = seedDep(); o.budget = 450; } if (!o.unites) o.unites = UNITES.slice(); if (!o.ordres) o.ordres = { emplacements: 'perso', categories: 'perso', unites: 'perso' }; return o; } } catch (e) {}
     return seed();
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
@@ -80,14 +81,16 @@
       var emplacements = Object.keys(per).map(function (k) { return { nom: k, qte: Math.round(per[k] * 1000) / 1000 }; })
         .filter(function (e) { return e.qte !== 0; });
       var stock = emplacements.reduce(function (s, e) { return s + e.qte; }, 0);
-      return { nom: a.nom, categorie: a.categorie, unite: a.unite, alerte: a.alerte, seuil: a.seuil, photo: a.photo, stock: stock, emplacements: emplacements };
+      return { nom: a.nom, categorie: a.categorie, unite: a.unite, alerte: a.alerte, seuil: a.seuil, photo: a.photo, autoCourses: !!a.autoCourses,
+        seuilCourses: a.seuilCourses == null ? null : a.seuilCourses, stock: stock, emplacements: emplacements };
     });
     var mv = db.mouvements.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 200);
     var deps = db.depenses.map(function (d) {
       var t = (d.parts.Sara || 0) + (d.parts.Jordana || 0);
       return { id: d.id, date: d.date, magasin: d.magasin, parts: { Sara: d.parts.Sara || 0, Jordana: d.parts.Jordana || 0 }, total: Math.round(t * 100) / 100 };
     }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
-    return { emplacements: db.emplacements, categories: db.categories, personnes: PERSONNES, aliments: aliments, courses: db.courses.slice(), mouvements: mv,
+    return { emplacements: sortList(db.emplacements, db.ordres.emplacements), categories: sortList(db.categories, db.ordres.categories),
+      unites: sortList(db.unites, db.ordres.unites), ordres: JSON.parse(JSON.stringify(db.ordres)), personnes: PERSONNES, aliments: aliments, courses: db.courses.slice(), mouvements: mv,
       personnesDep: ['Sara', 'Jordana'], depenses: deps, budget: db.budget || 0 };
   }
 
@@ -103,6 +106,19 @@
     return parts;
   }
 
+  function sortList(arr, mode) {
+    if (mode !== 'az' && mode !== 'za') return arr.slice();
+    var out = arr.slice().sort(function (a, b) { return a.localeCompare(b, 'fr', { sensitivity: 'base', numeric: true }); });
+    return mode === 'za' ? out.reverse() : out;
+  }
+  function checkAuto(nom) {
+    var a = compute().aliments.filter(function (x) { return x.nom === nom; })[0];
+    if (!a || !a.autoCourses) return;
+    var seuil = a.seuilCourses == null ? a.seuil : a.seuilCourses;
+    if (a.stock > seuil + 1e-9) return;
+    if (db.courses.some(function (c) { return !c.achete && norm(c.article) === norm(nom); })) return;
+    db.courses.push({ id: uid(), article: nom, achete: false, ajoutePar: 'Auto', date: today() });
+  }
   function findAl(nom) { return db.aliments.filter(function (a) { return a.nom === nom; })[0]; }
 
   function addMov(p) {
@@ -132,6 +148,7 @@
     }
     if (p.unite !== undefined && p.type === 'Ajout') a.unite = p.unite || '';
     db.mouvements.push({ id: uid(), date: p.date || today(), aliment: a.nom, type: p.type, quantite: q, emplacement: p.emplacement, personne: p.personne || '', note: p.note || '' });
+    if (p.type === 'Retrait') checkAuto(a.nom);
   }
 
   function handle(action, p) {
@@ -143,7 +160,7 @@
         var dispo = stockOf(p.aliment, p.emplacement);
         if (dispo <= 0) throw new Error('Rien à retirer ici.');
         db.mouvements.push({ id: uid(), date: today(), aliment: p.aliment, type: 'Retrait', quantite: dispo, emplacement: p.emplacement, personne: p.personne || '', note: 'Tout retiré' });
-        break;
+        checkAuto(p.aliment); break;
       case 'setAlerte':
         var a = findAl(p.aliment); if (!a) throw new Error('Aliment introuvable.');
         a.alerte = !!p.alerte; a.seuil = Math.max(0, Number(p.seuil) || 0); break;
@@ -196,6 +213,42 @@
         if (eu > 0) throw new Error('Cet emplacement contient encore ' + eu + ' aliment' + (eu > 1 ? 's' : '') + ' : retirez-' + (eu > 1 ? 'les' : 'le') + ' d’abord.');
         if (db.emplacements.length <= 1) throw new Error('Gardez au moins un emplacement.');
         db.emplacements = db.emplacements.filter(function (c) { return c !== p.nom; }); break; }
+      case 'addUnite': {
+        var un = String(p.nom || '').trim(); if (!un) throw new Error('Donnez un nom à l’unité.');
+        if (db.unites.some(function (c) { return norm(c) === norm(un); })) throw new Error('Cette unité existe déjà.');
+        db.unites.push(un); break; }
+      case 'renameUnite': {
+        var uo = String(p.ancien || '').trim(), uw = String(p.nouveau || '').trim(); if (!uw) throw new Error('Donnez un nom à l’unité.');
+        if (db.unites.indexOf(uo) < 0) throw new Error('Unité introuvable.');
+        if (db.unites.some(function (c) { return c !== uo && norm(c) === norm(uw); })) throw new Error('Une autre unité porte déjà ce nom.');
+        db.unites = db.unites.map(function (c) { return c === uo ? uw : c; });
+        db.aliments.forEach(function (a) { if (a.unite === uo) a.unite = uw; }); break; }
+      case 'deleteUnite': {
+        var uu = db.aliments.filter(function (a) { return a.unite === p.nom; }).length;
+        if (uu > 0) throw new Error('Cette unité est utilisée par ' + uu + ' aliment' + (uu > 1 ? 's' : '') + ' : changez-leur d’unité d’abord.');
+        db.unites = db.unites.filter(function (c) { return c !== p.nom; }); break; }
+      case 'setOrdre':
+        if (['emplacements', 'categories', 'unites'].indexOf(p.liste) < 0) throw new Error('Liste inconnue.');
+        db.ordres[p.liste] = p.mode === 'az' || p.mode === 'za' ? p.mode : 'perso'; break;
+      case 'reorder': {
+        var src = db[p.liste]; if (!src) throw new Error('Liste inconnue.');
+        var out = (p.noms || []).filter(function (n) { return src.indexOf(n) >= 0; });
+        src.forEach(function (n) { if (out.indexOf(n) < 0) out.push(n); });
+        db[p.liste] = out; db.ordres[p.liste] = 'perso'; break; }
+      case 'updateAliment': {
+        var ua = findAl(p.ancien); if (!ua) throw new Error('Aliment introuvable.');
+        var nn2 = String(p.nom || '').trim(); if (!nn2) throw new Error("Donnez un nom à l'aliment.");
+        if (db.aliments.some(function (x) { return x !== ua && norm(x.nom) === norm(nn2); })) throw new Error('Un autre aliment porte déjà ce nom.');
+        if (db.categories.indexOf(p.categorie) < 0) throw new Error('Choisissez une catégorie.');
+        if (nn2 !== ua.nom) {
+          db.mouvements.forEach(function (m) { if (m.aliment === ua.nom) m.aliment = nn2; });
+          db.courses.forEach(function (c) { if (norm(c.article) === norm(ua.nom)) c.article = nn2; });
+        }
+        ua.nom = nn2; ua.categorie = p.categorie; ua.unite = String(p.unite || '').trim(); break; }
+      case 'setAutoCourses': {
+        var sa = findAl(p.aliment); if (!sa) throw new Error('Aliment introuvable.');
+        sa.autoCourses = !!p.auto; sa.seuilCourses = Math.max(0, Number(p.seuil) || 0);
+        if (sa.autoCourses) checkAuto(sa.nom); break; }
       case 'setBudget': db.budget = Math.max(0, Number(p.budget) || 0); break;
       default: throw new Error('Action inconnue : ' + action);
     }

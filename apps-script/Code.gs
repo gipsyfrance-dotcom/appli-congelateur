@@ -13,7 +13,8 @@ var CFG = {
   TZ: 'Europe/Paris',
   PERSONNES: ['Jordana', 'Sara'],
   PERSONNES_DEP: ['Sara', 'Jordana'], // ordre d'affichage des parts dans les dépenses (une colonne par personne dans l'onglet Depenses)
-  TABS: { emplacements: 'Emplacements', aliments: 'Aliments', categories: 'Categories', mouvements: 'Mouvements', courses: 'Courses', depenses: 'Depenses' }
+  TABS: { emplacements: 'Emplacements', aliments: 'Aliments', categories: 'Categories', mouvements: 'Mouvements', courses: 'Courses', depenses: 'Depenses', unites: 'Unites' },
+  UNITES_DEFAUT: ['portions', 'sachets', 'pièces', 'boîtes', 'barquettes', 'plats', 'plaquettes', 'bocaux', 'pots', 'bouteilles', 'g', 'kg', 'L']
 };
 
 /* ---------------------------- Points d'entrée ---------------------------- */
@@ -49,6 +50,13 @@ function doPost(e) {
       case 'addEmplacement': addEmplacement_(req); break;
       case 'renameEmplacement': renameEmplacement_(req); break;
       case 'deleteEmplacement': deleteEmplacement_(req); break;
+      case 'addUnite': addUnite_(req); break;
+      case 'renameUnite': renameUnite_(req); break;
+      case 'deleteUnite': deleteUnite_(req); break;
+      case 'setOrdre': setOrdre_(req); break;
+      case 'reorder': reorder_(req); break;
+      case 'updateAliment': updateAliment_(req); break;
+      case 'setAutoCourses': setAutoCourses_(req); break;
       default: return json_({ ok: false, error: 'Action inconnue : ' + req.action });
     }
     SpreadsheetApp.flush();
@@ -67,17 +75,22 @@ function state_() {
   var emp = readTable_(CFG.TABS.emplacements), cat = readTable_(CFG.TABS.categories);
   var al = readTable_(CFG.TABS.aliments), mv = readTable_(CFG.TABS.mouvements), co = readTable_(CFG.TABS.courses);
 
-  var emplacements = emp.rows.map(function (r) { return String(r[col_(emp, ['nom', 'emplacement', 'nomemplacement'], 0)] || '').trim(); }).filter(Boolean);
-  var categories = cat.rows.map(function (r) { return String(r[col_(cat, ['nom', 'categorie', 'nomcategorie'], 0)] || '').trim(); }).filter(Boolean);
+  var ordres = { emplacements: ordre_('emplacements'), categories: ordre_('categories'), unites: ordre_('unites') };
+  var emplacements = sortList_(emp.rows.map(function (r) { return String(r[col_(emp, ['nom', 'emplacement', 'nomemplacement'], 0)] || '').trim(); }).filter(Boolean), ordres.emplacements);
+  var categories = sortList_(cat.rows.map(function (r) { return String(r[col_(cat, ['nom', 'categorie', 'nomcategorie'], 0)] || '').trim(); }).filter(Boolean), ordres.categories);
+  var ut = uniteTable_();
+  var unites = sortList_(ut.t.rows.map(function (r) { return String(r[ut.c] || '').trim(); }).filter(Boolean), ordres.unites);
 
   var cNom = col_(al, ['nom', 'aliment'], 0), cCat = col_(al, ['categorie']), cAl = col_(al, ['alerteactivee', 'alerte']),
-      cSe = col_(al, ['seuilalerte', 'seuildalerte', 'seuil']), cUn = col_(al, ['unite']), cPh = col_(al, ['photo', 'image']);
+      cSe = col_(al, ['seuilalerte', 'seuildalerte', 'seuil']), cUn = col_(al, ['unite']), cPh = col_(al, ['photo', 'image']),
+      cAc = col_(al, ['autocourses']), cSc = col_(al, ['seuilcourses']);
   var aliments = {}, order = [];
   al.rows.forEach(function (r) {
     var nom = String(r[cNom] || '').trim(); if (!nom) return;
     aliments[nom] = {
       nom: nom, categorie: cCat < 0 ? '' : String(r[cCat] || '').trim(), alerte: cAl < 0 ? false : bool_(r[cAl]),
       seuil: cSe < 0 ? 0 : num_(r[cSe]), unite: cUn < 0 ? '' : String(r[cUn] || '').trim(), photo: cPh < 0 ? '' : String(r[cPh] || '').trim(),
+      autoCourses: cAc < 0 ? false : bool_(r[cAc]), seuilCourses: (cSc < 0 || r[cSc] === '' || r[cSc] === null) ? null : num_(r[cSc]),
       stock: 0, emplacements: [], _per: {}
     };
     order.push(nom);
@@ -115,7 +128,7 @@ function state_() {
   });
 
   return {
-    emplacements: emplacements, categories: categories, personnes: CFG.PERSONNES, aliments: alimentsOut, courses: courses, mouvements: mouvements.slice(0, 200),
+    emplacements: emplacements, categories: categories, unites: unites, ordres: ordres, personnes: CFG.PERSONNES, aliments: alimentsOut, courses: courses, mouvements: mouvements.slice(0, 200),
     personnesDep: CFG.PERSONNES_DEP, depenses: depenses_(), budget: num_(PropertiesService.getScriptProperties().getProperty('BUDGET_MENSUEL'))
   };
 }
@@ -260,6 +273,7 @@ function addMouvement_(p) {
     date: dateObj_(p.date), aliment: p.aliment, type: p.type, quantite: q, emplacement: p.emplacement,
     personne: p.personne || '', note: p.note || '', idmouvement: Utilities.getUuid()
   }, { date: ['date'], aliment: ['aliment'], type: ['type'], quantite: ['quantite'], emplacement: ['emplacement'], personne: ['personne'], note: ['note'], idmouvement: ['idmouvement', 'id'] });
+  if (p.type === 'Retrait') checkAutoCourses_(p.aliment);
 }
 
 /* ---------------------------- Catégories ---------------------------- */
@@ -394,6 +408,159 @@ function deleteAliment_(p) {
   for (var i = al.rows.length - 1; i >= 0; i--) {
     if (String(al.rows[i][c] || '').trim() === p.aliment) { al.sh.deleteRow(i + 2); return; }
   }
+}
+
+/* ---------------------------- Unités ---------------------------- */
+
+/** Crée l'onglet « Unites » la première fois, rempli avec la liste par défaut + les unités déjà utilisées. */
+function uniteTable_() {
+  var ss = ss_(), sh = ss.getSheetByName(CFG.TABS.unites);
+  if (!sh) {
+    sh = ss.insertSheet(CFG.TABS.unites);
+    var list = CFG.UNITES_DEFAUT.slice();
+    try {
+      var al = readTable_(CFG.TABS.aliments), cu = col_(al, ['unite']);
+      if (cu >= 0) al.rows.forEach(function (r) {
+        var u = String(r[cu] || '').trim();
+        if (u && !list.some(function (x) { return normName_(x) === normName_(u); })) list.push(u);
+      });
+    } catch (e) {}
+    sh.getRange(1, 1).setValue('Nom').setFontWeight('bold');
+    sh.getRange(2, 1, list.length, 1).setValues(list.map(function (u) { return [u]; }));
+    sh.setFrozenRows(1);
+  }
+  var t = readTable_(CFG.TABS.unites);
+  return { t: t, c: col_(t, ['nom', 'unite'], 0) };
+}
+
+function addUnite_(p) {
+  var nom = String(p.nom || '').trim();
+  if (!nom) throw new Error('Donnez un nom à l’unité.');
+  var ut = uniteTable_();
+  if (ut.t.rows.some(function (r) { return normName_(r[ut.c]) === normName_(nom); })) throw new Error('Cette unité existe déjà.');
+  ut.t.sh.getRange(Math.max(ut.t.sh.getLastRow(), 1) + 1, ut.c + 1).setValue(nom);
+}
+
+function renameUnite_(p) {
+  var ancien = String(p.ancien || '').trim(), nouveau = String(p.nouveau || '').trim();
+  if (!nouveau) throw new Error('Donnez un nom à l’unité.');
+  var ut = uniteTable_(), row = -1;
+  ut.t.rows.forEach(function (r, i) {
+    var v = String(r[ut.c] || '').trim();
+    if (v === ancien) row = i + 2;
+    else if (normName_(v) === normName_(nouveau)) throw new Error('Une autre unité porte déjà ce nom.');
+  });
+  if (row < 0) throw new Error('Unité introuvable.');
+  ut.t.sh.getRange(row, ut.c + 1).setValue(nouveau);
+  var al = readTable_(CFG.TABS.aliments), cu = col_(al, ['unite']);
+  if (cu >= 0 && al.rows.length) {
+    var vals = al.rows.map(function (r) { return [String(r[cu] || '').trim() === ancien ? nouveau : r[cu]]; });
+    al.sh.getRange(2, cu + 1, vals.length, 1).setValues(vals);
+  }
+}
+
+function deleteUnite_(p) {
+  var nom = String(p.nom || '').trim();
+  var al = readTable_(CFG.TABS.aliments), cu = col_(al, ['unite']);
+  var used = cu < 0 ? 0 : al.rows.filter(function (r) { return String(r[cu] || '').trim() === nom; }).length;
+  if (used > 0) throw new Error('Cette unité est utilisée par ' + used + ' aliment' + (used > 1 ? 's' : '') + ' : changez-leur d’unité d’abord.');
+  var ut = uniteTable_(), row = -1;
+  ut.t.rows.forEach(function (r, i) { if (String(r[ut.c] || '').trim() === nom) row = i + 2; });
+  if (row < 0) throw new Error('Unité introuvable.');
+  ut.t.sh.deleteRow(row);
+}
+
+/* ---------------------------- Ordre d'affichage ---------------------------- */
+
+var LISTES_ = ['emplacements', 'categories', 'unites'];
+function ordre_(liste) {
+  var v = PropertiesService.getScriptProperties().getProperty('ORDRE_' + liste);
+  return v === 'az' || v === 'za' ? v : 'perso';
+}
+function sortList_(arr, mode) {
+  if (mode === 'perso') return arr;
+  var out = arr.slice().sort(function (a, b) { return a.localeCompare(b, 'fr', { sensitivity: 'base', numeric: true }); });
+  return mode === 'za' ? out.reverse() : out;
+}
+function listTable_(liste) {
+  if (liste === 'emplacements') return empTable_();
+  if (liste === 'categories') return catTable_();
+  if (liste === 'unites') return uniteTable_();
+  throw new Error('Liste inconnue.');
+}
+function setOrdre_(p) {
+  if (LISTES_.indexOf(p.liste) < 0) throw new Error('Liste inconnue.');
+  if (['perso', 'az', 'za'].indexOf(p.mode) < 0) throw new Error('Ordre inconnu.');
+  PropertiesService.getScriptProperties().setProperty('ORDRE_' + p.liste, p.mode);
+}
+/** Réécrit les lignes de l'onglet dans l'ordre donné (ordre personnalisé). */
+function reorder_(p) {
+  var lt = listTable_(p.liste), t = lt.t, noms = (p.noms || []).map(function (x) { return String(x).trim(); });
+  if (!t.rows.length) return;
+  var used = {}, out = [];
+  noms.forEach(function (n) {
+    for (var i = 0; i < t.rows.length; i++) if (!used[i] && String(t.rows[i][lt.c] || '').trim() === n) { used[i] = true; out.push(t.rows[i]); return; }
+  });
+  t.rows.forEach(function (r, i) { if (!used[i]) out.push(r); });
+  t.sh.getRange(2, 1, out.length, t.lastCol).setValues(out);
+  PropertiesService.getScriptProperties().setProperty('ORDRE_' + p.liste, 'perso');
+}
+
+/* ---------------------------- Modifier un aliment ---------------------------- */
+
+function updateAliment_(p) {
+  var ancien = String(p.ancien || '').trim(), nom = String(p.nom || '').trim(), cat = String(p.categorie || '').trim(), unite = String(p.unite || '').trim();
+  if (!nom) throw new Error("Donnez un nom à l'aliment.");
+  var al = readTable_(CFG.TABS.aliments), cN = col_(al, ['nom', 'aliment'], 0), cC = col_(al, ['categorie']), cU = col_(al, ['unite']), row = -1;
+  al.rows.forEach(function (r, i) {
+    var v = String(r[cN] || '').trim();
+    if (v === ancien) row = i + 2;
+    else if (normName_(v) === normName_(nom)) throw new Error('Un autre aliment porte déjà ce nom.');
+  });
+  if (row < 0) throw new Error('Aliment introuvable.');
+  var ct = catTable_();
+  if (!ct.t.rows.some(function (r) { return String(r[ct.c] || '').trim() === cat; })) throw new Error('Choisissez une catégorie.');
+  al.sh.getRange(row, cN + 1).setValue(nom);
+  if (cC >= 0) al.sh.getRange(row, cC + 1).setValue(cat);
+  if (cU >= 0) al.sh.getRange(row, cU + 1).setValue(unite);
+  if (nom !== ancien) {
+    var mv = readTable_(CFG.TABS.mouvements), mc = col_(mv, ['aliment']);
+    if (mc >= 0 && mv.rows.length) {
+      var vals = mv.rows.map(function (r) { return [String(r[mc] || '').trim() === ancien ? nom : r[mc]]; });
+      mv.sh.getRange(2, mc + 1, vals.length, 1).setValues(vals);
+    }
+    var co = readTable_(CFG.TABS.courses), kc = col_(co, ['article'], 0);
+    if (co.rows.length) {
+      var cv = co.rows.map(function (r) { return [normName_(r[kc]) === normName_(ancien) ? nom : r[kc]]; });
+      co.sh.getRange(2, kc + 1, cv.length, 1).setValues(cv);
+    }
+  }
+}
+
+/* ---------------------------- Ajout automatique aux courses ---------------------------- */
+
+/** Ajoute les colonnes manquantes à la fin d'un onglet. */
+function ensureCols_(tab, headers) {
+  var t = readTable_(tab), add = headers.filter(function (h) { return !(norm_(h) in t.idx); });
+  if (!add.length) return;
+  t.sh.getRange(1, t.lastCol + 1, 1, add.length).setValues([add]).setFontWeight('bold');
+}
+
+function setAutoCourses_(p) {
+  ensureCols_(CFG.TABS.aliments, ['AutoCourses', 'SeuilCourses']);
+  var ok = setCell_(CFG.TABS.aliments, ['nom', 'aliment'], p.aliment, ['autocourses'], !!p.auto);
+  if (!ok) throw new Error('Aliment introuvable.');
+  setCell_(CFG.TABS.aliments, ['nom', 'aliment'], p.aliment, ['seuilcourses'], Math.max(0, num_(p.seuil)));
+  if (p.auto) checkAutoCourses_(p.aliment);
+}
+
+function checkAutoCourses_(nom) {
+  var st = state_(), a = st.aliments.filter(function (x) { return x.nom === nom; })[0];
+  if (!a || !a.autoCourses) return;
+  var seuil = a.seuilCourses === null ? a.seuil : a.seuilCourses;
+  if (a.stock > seuil + 1e-9) return;
+  if (st.courses.some(function (c) { return !c.achete && normName_(c.article) === normName_(nom); })) return;
+  try { addCourse_({ article: nom, ajoutePar: 'Auto' }); } catch (e) {}
 }
 
 /* ---------------------------- Utilitaires feuille ---------------------------- */

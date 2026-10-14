@@ -60,6 +60,7 @@
     return ['🍽️', '#e8f1f7'];
   };
   var niceCat = function (c) { c = String(c || '').trim().toLowerCase(); return c.charAt(0).toUpperCase() + c.slice(1); };
+  var unitList = function () { return (data && data.unites && data.unites.length ? data.unites : UNITES).slice(); };
   var UNITES = ['portions', 'sachets', 'pièces', 'boîtes', 'barquettes', 'plats', 'plaquettes', 'bocaux', 'pots', 'bouteilles', 'g', 'kg', 'L'];
 
   var P = {
@@ -79,6 +80,10 @@
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     refresh: '<path d="M20 11a8 8 0 0 0-14-4M4 4v4h4M4 13a8 8 0 0 0 14 4M20 20v-4h-4"/>',
     tag: '<path d="M3 12V4h8l10 10-8 8L3 12z"/><circle cx="7.5" cy="8.5" r="1.2"/>',
+    sort: '<path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"/>',
+    grip: '<path d="M5 8h14M5 12h14M5 16h14"/>',
+    pen: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+    ruler: '<path d="M3 17 17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
     key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
     euro: '<path d="M18 7a7 7 0 1 0 0 10M4 10h9M4 14h9"/>',
@@ -305,7 +310,12 @@
         '<button class="mini red" data-act="clear" data-nom="' + esc(a.nom) + '" data-emp="' + esc(e.nom) + '">Tout retirer</button></div></div>';
     }).join('') + '</div>' : '<div class="card pad empty" style="padding:18px">Plus en stock.</div>';
     var seuilUnit = a.unite ? ' ' + unitLabel(2, a.unite) : '';
-    return header(a.nom, niceCat(a.categorie), { back: true }) +
+    var autoSeuil = a.seuilCourses == null ? (a.alerte ? a.seuil : 0) : a.seuilCourses;
+    var autoCard = '<div class="card pad alert-panel" style="margin-top:16px"><div class="head"><span style="font-size:20px;line-height:1">🧺</span><div style="flex:1"><b>Ajout automatique aux courses</b><div class="sub" style="margin:0">Ajouter à la liste quand le stock baisse</div></div>' +
+      '<label class="switch"><input type="checkbox" data-auto-toggle="' + esc(a.nom) + '" ' + (a.autoCourses ? 'checked' : '') + '><i></i></label></div>' +
+      (a.autoCourses ? '<div class="seuil">Ajouter quand il reste : <input type="number" min="0" step="any" inputmode="decimal" data-auto-seuil="' + esc(a.nom) + '" value="' + esc(autoSeuil) + '">' + esc(seuilUnit.trim()) + '</div>' +
+        '<p class="hint">« ' + esc(a.nom) + ' » s’ajoutera tout seul à la liste de courses quand il en restera ' + (autoSeuil > 0 ? esc(qty(autoSeuil, a.unite)) + ' ou moins' : 'zéro') + '.</p>' : '') + '</div>';
+    return header(a.nom, niceCat(a.categorie), { back: true, right: '<button class="icon-btn" data-act="food-edit" data-nom="' + esc(a.nom) + '" aria-label="Modifier l’aliment" style="color:var(--teal-d)">' + ico('pen') + '</button>' }) +
       '<div class="card pad" style="display:flex;gap:14px;align-items:center;margin-bottom:14px">' + thumb(a, 'lg') +
       '<div><div class="sub" style="margin:0">En stock au total</div><div style="font-size:26px;font-weight:800">' + esc(qty(a.stock, a.unite)) + '</div></div></div>' +
       '<div class="btn-row" style="margin-top:0"><a class="btn sm" href="#/mouvement?type=Ajout&aliment=' + enc(a.nom) + '">' + ico('plus') + 'Ajouter</a>' +
@@ -314,7 +324,7 @@
       '<div class="card pad alert-panel" style="margin-top:16px"><div class="head">' + ico('bell') + '<div style="flex:1"><b>Alerte stock faible</b><div class="sub" style="margin:0">Gérer l’alerte pour cet aliment</div></div>' +
       '<label class="switch"><input type="checkbox" data-alert-toggle="' + esc(a.nom) + '" ' + (a.alerte ? 'checked' : '') + '><i></i></label></div>' +
       (a.alerte ? '<div class="seuil">Seuil d’alerte : <input type="number" min="0" step="any" inputmode="decimal" data-alert-seuil="' + esc(a.nom) + '" value="' + esc(a.seuil) + '">' + esc(seuilUnit.trim()) + '</div>' +
-        '<p class="hint">Cet aliment apparaîtra dans « Stock faible » quand la quantité sera inférieure ou égale à ' + esc(qty(a.seuil, a.unite)) + '.</p>' : '') + '</div>' +
+        '<p class="hint">Cet aliment apparaîtra dans « Stock faible » quand la quantité sera inférieure ou égale à ' + esc(qty(a.seuil, a.unite)) + '.</p>' : '') + '</div>' + autoCard +
       '<div class="stack" style="margin-top:16px">' +
       '<button class="btn ghost sm" data-act="addcourse" data-nom="' + esc(a.nom) + '"' + (inCourses(a.nom) ? ' disabled' : '') + '>' + ico('basket') + (inCourses(a.nom) ? 'Déjà dans la liste de courses' : 'Ajouter à la liste de courses') + '</button>' +
       '<a class="btn ghost sm" href="#/historique/' + enc(a.nom) + '">' + ico('clock') + 'Voir les mouvements</a>' +
@@ -473,15 +483,32 @@
   }
 
   /* ----- catégories ----- */
+  /* ----- ordre d'affichage (catégories, emplacements, unités) ----- */
+  var ORD_LABEL = { perso: 'Personnalisé', az: 'De A à Z', za: 'De Z à A' };
+  var LIST_LABEL = { categories: 'Catégories', emplacements: 'Emplacements', unites: 'Unités' };
+  function ordreOf(liste) { return (data.ordres && data.ordres[liste]) || 'perso'; }
+  function sortBar(liste) {
+    return '<div class="resline" style="margin-bottom:10px"><span>Ordre d’affichage</span><button class="pillbtn" data-act="ord-open" data-liste="' + liste + '">' + ico('sort') + ORD_LABEL[ordreOf(liste)] + '</button></div>';
+  }
+  function grip(liste) { return ordreOf(liste) === 'perso' ? '<span class="grip" data-grip="' + liste + '" aria-label="Glisser pour ranger">' + ico('grip') + '</span>' : ''; }
+  function sortHint(liste, what) { return ordreOf(liste) === 'perso' ? '<p class="hint">Maintenez ≡ et glissez pour changer l’ordre. ' + what + '</p>' : ''; }
+  function openOrdre(liste) {
+    var cur = ordreOf(liste);
+    openSheet('<h3>Ordre d’affichage</h3><p class="sub">Pour : ' + LIST_LABEL[liste] + '</p><div class="card list">' +
+      [['perso', 'Vous rangez à la main (glisser-déposer)'], ['az', 'Ordre alphabétique'], ['za', 'Ordre alphabétique inversé']].map(function (o) {
+        return '<button class="menu-row" data-act="ord-set" data-liste="' + liste + '" data-mode="' + o[0] + '"><span>' + ORD_LABEL[o[0]] + '<small style="display:block;color:var(--ink2);font-weight:400">' + o[1] + '</small></span>' + (cur === o[0] ? '<b style="color:var(--teal-d)">✓</b>' : '') + '</button>';
+      }).join('') + '</div>');
+  }
+
   var CATE = { nom: null };
   function viewCats() {
     var rows = data.categories.map(function (c) {
       var n = data.aliments.filter(function (a) { return a.categorie === c; }).length;
-      return '<button class="menu-row" data-act="cat-edit" data-cat="' + esc(c) + '"><span class="cico" style="background:' + catInfo(c)[1] + '">' + catInfo(c)[0] + '</span><span>' + esc(niceCat(c)) + '<small style="display:block;color:var(--muted,#6b7f8a);font-weight:400">' + n + ' aliment' + (n > 1 ? 's' : '') + '</small></span>' + ico('chev') + '</button>';
+      return '<button class="menu-row" data-act="cat-edit" data-cat="' + esc(c) + '" data-item="' + esc(c) + '">' + grip('categories') + '<span class="cico" style="background:' + catInfo(c)[1] + '">' + catInfo(c)[0] + '</span><span>' + esc(niceCat(c)) + '<small style="display:block;color:var(--muted,#6b7f8a);font-weight:400">' + n + ' aliment' + (n > 1 ? 's' : '') + '</small></span>' + ico('chev') + '</button>';
     }).join('');
     return header('Catégories', 'Modifier, ajouter ou retirer', { back: true }) +
       '<button class="btn" data-act="cat-add" style="margin-bottom:14px">' + ico('plus') + 'Ajouter une catégorie</button>' +
-      (rows ? '<div class="card list">' + rows + '</div>' : '<div class="empty"><div class="big">🏷️</div>Aucune catégorie.</div>');
+      (rows ? sortBar('categories') + '<div class="card list" data-sortlist="categories">' + rows + '</div>' + sortHint('categories', 'Cet ordre est repris dans toute l’appli.') : '<div class="empty"><div class="big">🏷️</div>Aucune catégorie.</div>');
   }
   function openCat(nom) {
     CATE.nom = nom || null;
@@ -497,11 +524,12 @@
   function viewEmps() {
     var rows = data.emplacements.map(function (n) {
       var c = empCount(n);
-      return '<button class="menu-row" data-act="emp-edit" data-emp="' + esc(n) + '">' + ico('chest') + '<span>' + esc(n) + '<small style="display:block;color:var(--ink2);font-weight:400">' + (c ? c + ' aliment' + (c > 1 ? 's' : '') : 'vide') + '</small></span>' + ico('chev') + '</button>';
+      return '<button class="menu-row" data-act="emp-edit" data-emp="' + esc(n) + '" data-item="' + esc(n) + '">' + grip('emplacements') + ico('chest') + '<span>' + esc(n) + '<small style="display:block;color:var(--ink2);font-weight:400">' + (c ? c + ' aliment' + (c > 1 ? 's' : '') : 'vide') + '</small></span>' + ico('chev') + '</button>';
     }).join('');
     return header('Emplacements', 'Modifier, ajouter ou retirer', { back: true }) +
       '<button class="btn" data-act="emp-add" style="margin-bottom:14px">' + ico('plus') + 'Ajouter un emplacement</button>' +
-      '<div class="card list">' + rows + '</div>';
+      sortBar('emplacements') + '<div class="card list" data-sortlist="emplacements">' + rows + '</div>' +
+      sortHint('emplacements', 'Le premier emplacement est proposé par défaut quand on ajoute un aliment.');
   }
   function openEmp(nom) {
     EMPE.nom = nom || null;
@@ -511,6 +539,65 @@
       '<p class="err" id="x-err" hidden></p><button class="btn" data-act="emp-save" id="x-save">Enregistrer</button>' +
       (nom ? (n ? '<p class="hint" style="margin-top:10px">Pour le supprimer, retirez d’abord ses ' + n + ' aliment' + (n > 1 ? 's' : '') + '.</p>' : '<button class="btn danger sm" style="margin-top:10px" data-act="emp-del">' + ico('trash') + 'Supprimer cet emplacement</button>') + '<p class="hint" style="margin-top:10px">Renommer met à jour tout l’historique : rien n’est perdu.</p>' : ''));
   }
+  /* ----- unités ----- */
+  var UNE = { nom: null };
+  function unitCount(u) { return data.aliments.filter(function (a) { return a.unite === u; }).length; }
+  function viewUnits() {
+    var rows = unitList().map(function (u) {
+      var c = unitCount(u);
+      return '<button class="menu-row" data-act="unit-edit" data-unit="' + esc(u) + '" data-item="' + esc(u) + '">' + grip('unites') + '<span>' + esc(u) + '<small style="display:block;color:var(--ink2);font-weight:400">' + (c ? c + ' aliment' + (c > 1 ? 's' : '') : 'pas encore utilisée') + '</small></span>' + ico('chev') + '</button>';
+    }).join('');
+    return header('Unités', 'Ajouter, renommer, retirer, ranger', { back: true }) +
+      '<button class="btn" data-act="unit-add" style="margin-bottom:14px">' + ico('plus') + 'Ajouter une unité</button>' +
+      sortBar('unites') + '<div class="card list" data-sortlist="unites">' + rows + '</div>' +
+      sortHint('unites', 'Cet ordre est celui du menu « Unité » quand on enregistre un aliment.');
+  }
+  function openUnit(nom) {
+    UNE.nom = nom || null;
+    var n = nom ? unitCount(nom) : 0;
+    openSheet('<h3>' + (nom ? 'Modifier l’unité' : 'Nouvelle unité') + '</h3>' +
+      '<div class="field"><label for="x-unit-nom">Nom</label><input class="inp" id="x-unit-nom" maxlength="30" autocomplete="off" placeholder="Ex. tranches" value="' + esc(nom || '') + '">' +
+      '<p class="hint">Écrivez-la au pluriel (ex. « pots ») : l’appli affiche « 1 pot », « 3 pots ».</p></div>' +
+      '<p class="err" id="x-err" hidden></p><button class="btn" data-act="unit-save" id="x-save">Enregistrer</button>' +
+      (nom ? (n ? '<p class="hint" style="margin-top:10px">Pour la supprimer, changez d’abord l’unité de ses ' + n + ' aliment' + (n > 1 ? 's' : '') + '.</p>' : '<button class="btn danger sm" style="margin-top:10px" data-act="unit-del">' + ico('trash') + 'Supprimer cette unité</button>') +
+        (n ? '<p class="hint" style="margin-top:10px">Renommer met à jour les ' + n + ' aliment' + (n > 1 ? 's' : '') + ' qui l’utilisent.</p>' : '') : ''));
+  }
+
+  /* ----- glisser-déposer pour ranger une liste ----- */
+  var DRAG = null;
+  function dragStart(ev, handle) {
+    var row = handle.closest('[data-item]'), list = handle.closest('[data-sortlist]'); if (!row || !list) return;
+    ev.preventDefault();
+    var rect = row.getBoundingClientRect();
+    DRAG = { row: row, list: list, liste: list.dataset.sortlist, startY: ev.clientY, h: rect.height, moved: false };
+    row.classList.add('dragging');
+    try { handle.setPointerCapture(ev.pointerId); } catch (e) {}
+  }
+  function dragMove(ev) {
+    if (!DRAG) return;
+    ev.preventDefault();
+    var dy = ev.clientY - DRAG.startY; DRAG.moved = DRAG.moved || Math.abs(dy) > 4;
+    DRAG.row.style.transform = 'translateY(' + dy + 'px)';
+    var rows = Array.prototype.slice.call(DRAG.list.querySelectorAll('[data-item]')), i = rows.indexOf(DRAG.row);
+    if (dy > DRAG.h * 0.6 && i < rows.length - 1) { DRAG.list.insertBefore(rows[i + 1], DRAG.row); DRAG.startY += DRAG.h; DRAG.row.style.transform = 'translateY(' + (ev.clientY - DRAG.startY) + 'px)'; }
+    else if (dy < -DRAG.h * 0.6 && i > 0) { DRAG.list.insertBefore(DRAG.row, rows[i - 1]); DRAG.startY -= DRAG.h; DRAG.row.style.transform = 'translateY(' + (ev.clientY - DRAG.startY) + 'px)'; }
+  }
+  function dragEnd() {
+    if (!DRAG) return;
+    var d = DRAG; DRAG = null;
+    d.row.classList.remove('dragging'); d.row.style.transform = '';
+    d.list.querySelectorAll('.menu-row').forEach(function (r, i) { r.style.borderTop = ''; });
+    if (!d.moved) return;
+    var noms = Array.prototype.map.call(d.list.querySelectorAll('[data-item]'), function (r) { return r.dataset.item; });
+    data[d.liste] = noms.slice(); if (data.ordres) data.ordres[d.liste] = 'perso';
+    d.list.dataset.justDragged = '1'; setTimeout(function () { delete d.list.dataset.justDragged; }, 300);
+    safe(function () { return write('reorder', { liste: d.liste, noms: noms }); }).then(function () { toast('Ordre enregistré ✓'); });
+  }
+  document.addEventListener('pointerdown', function (ev) { var g = ev.target.closest && ev.target.closest('[data-grip]'); if (g) dragStart(ev, g); });
+  document.addEventListener('pointermove', dragMove, { passive: false });
+  document.addEventListener('pointerup', dragEnd);
+  document.addEventListener('pointercancel', dragEnd);
+
   function viewMore() {
     var pers = data.personnes.map(function (p) { return '<button type="button" class="' + (me === p ? 'on add' : '') + '" data-act="setme" data-p="' + esc(p) + '">' + esc(p) + '</button>'; }).join('');
     return header('Plus', 'Réglages et raccourcis') +
@@ -520,6 +607,7 @@
       '<button class="menu-row" data-act="setbudget">' + ico('euro') + '<span>Budget mensuel des courses</span>' + ico('chev') + '</button>' +
       '<a class="menu-row" href="#/emplacements">' + ico('chest') + '<span>Emplacements</span>' + ico('chev') + '</a>' +
       '<a class="menu-row" href="#/categories">' + ico('tag') + '<span>Catégories</span>' + ico('chev') + '</a>' +
+      '<a class="menu-row" href="#/unites">' + ico('ruler') + '<span>Unités</span>' + ico('chev') + '</a>' +
       '<a class="menu-row" href="#/courses">' + ico('basket') + '<span>Liste de courses</span>' + ico('chev') + '</a>' +
       '<a class="menu-row" href="#/historique">' + ico('clock') + '<span>Historique des mouvements</span>' + ico('chev') + '</a>' +
       '<a class="menu-row" href="#/stock?all=1">' + ico('list') + '<span>Tous les aliments (y compris à zéro)</span>' + ico('chev') + '</a>' +
@@ -584,7 +672,7 @@
     var empList = ret && a ? a.emplacements.filter(function (e) { return e.qte > 0; }).map(function (e) { return { v: e.nom, l: e.nom + ' (' + fmtNum(e.qte) + ')' }; })
       : data.emplacements.map(function (n) { return { v: n, l: n }; });
     var empOpts = opt('', 'Choisir un emplacement…', !F.emp) + empList.map(function (e) { return opt(e.v, e.l, e.v === F.emp); }).join('');
-    var units = UNITES.slice(); if (F.unite && units.indexOf(F.unite) < 0) units.unshift(F.unite);
+    var units = unitList(); if (F.unite && units.indexOf(F.unite) < 0) units.unshift(F.unite);
     var unitOpts = opt('', '—', !F.unite) + units.map(function (u) { return opt(u, u, u === F.unite); }).join('');
     var avail = ret && a && F.emp ? (a.emplacements.filter(function (e) { return e.nom === F.emp; })[0] || { qte: 0 }).qte : null;
     var catOpts = opt('', 'Choisir une catégorie…', !F.cat) + data.categories.map(function (c) { return opt(c, niceCat(c), c === F.cat); }).join('') + opt('__newcat__', '＋ Nouvelle catégorie…', F.cat === '__newcat__');
@@ -636,7 +724,7 @@
   /* ============================== Rendu / routage ============================== */
   var ROUTES = [
     [/^\/$/, 'home'], [/^\/stock$/, 'stock'], [/^\/mouvement$/, 'move'], [/^\/alertes$/, 'alerts'], [/^\/courses$/, 'courses'],
-    [/^\/plus$/, 'more'], [/^\/categories$/, 'cats'], [/^\/emplacements$/, 'emps'], [/^\/synthese$/, 'synth'], [/^\/emplacement\/(.+)$/, 'place'], [/^\/aliment\/(.+)$/, 'food'], [/^\/historique(?:\/(.+))?$/, 'history']
+    [/^\/plus$/, 'more'], [/^\/categories$/, 'cats'], [/^\/emplacements$/, 'emps'], [/^\/unites$/, 'units'], [/^\/synthese$/, 'synth'], [/^\/emplacement\/(.+)$/, 'place'], [/^\/aliment\/(.+)$/, 'food'], [/^\/historique(?:\/(.+))?$/, 'history']
   ];
   var memHash = null, navStack = [];
   function curHash() { return memHash !== null ? memHash : (location.hash.replace(/^#/, '') || '/'); }
@@ -668,7 +756,7 @@
       return '<a class="tab" data-tab="' + t[0] + '" href="' + t[3] + '">' + ico(t[2]) + '<span>' + t[1] + '</span></a>';
     }).join('');
   }
-  var TABMAP = { home: 'home', place: 'home', stock: 'stock', food: 'stock', alerts: 'stock', courses: 'courses', history: 'more', more: 'more', cats: 'more', emps: 'more' };
+  var TABMAP = { home: 'home', place: 'home', stock: 'stock', food: 'stock', alerts: 'stock', courses: 'courses', history: 'more', more: 'more', cats: 'more', emps: 'more', units: 'more' };
 
   function render() {
     syncForm();
@@ -689,6 +777,7 @@
         case 'synth': html = viewSynth(); break;
         case 'more': html = viewMore(); break;
         case 'cats': html = viewCats(); break;
+        case 'units': html = viewUnits(); break;
         case 'emps': html = viewEmps(); break;
         case 'place': html = viewPlace(r.arg); break;
         case 'food': html = viewFood(r.arg); break;
@@ -714,6 +803,32 @@
     memHash = h; routeChanged = true; closeSheetSilent(); render();
   });
   function closeSheetSilent() { $('#sheet').classList.remove('open'); sheetResolve = null; }
+
+  /* ----- modifier un aliment (nom, catégorie, unité) ----- */
+  var FE = { nom: '' };
+  function openFoodEdit(nom) {
+    var a = findAl(nom); if (!a) return;
+    FE.nom = nom;
+    var units = unitList(); if (a.unite && units.indexOf(a.unite) < 0) units.unshift(a.unite);
+    openSheet('<h3>Modifier l’aliment</h3>' +
+      '<div class="field"><label for="fe-nom">Nom</label><input class="inp" id="fe-nom" maxlength="60" autocomplete="off" value="' + esc(a.nom) + '"></div>' +
+      '<div class="field"><label for="fe-cat">Catégorie</label><select class="inp" id="fe-cat">' + data.categories.map(function (c) { return '<option value="' + esc(c) + '"' + (c === a.categorie ? ' selected' : '') + '>' + esc(niceCat(c)) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field"><label for="fe-unit">Unité</label><select class="inp" id="fe-unit"><option value="">—</option>' + units.map(function (u) { return '<option' + (u === a.unite ? ' selected' : '') + '>' + esc(u) + '</option>'; }).join('') + '</select></div>' +
+      '<p class="hint" style="margin:-4px 2px 14px">Le nom change partout, y compris dans l’historique et la liste de courses. Pour changer d’emplacement, utilisez « Déplacer ».</p>' +
+      '<p class="err" id="fe-err" hidden></p><button class="btn" data-act="food-save" id="fe-save">Enregistrer</button>' +
+      '<button class="btn ghost sm" style="margin-top:10px" data-act="sheet-cancel">Annuler</button>');
+  }
+  async function saveFoodEdit() {
+    var nom = $('#fe-nom').value.trim(), box = $('#fe-err'), btn = $('#fe-save');
+    if (!nom) { box.textContent = "Donnez un nom à l'aliment."; box.hidden = false; return; }
+    btn.disabled = true;
+    try {
+      await write('updateAliment', { ancien: FE.nom, nom: nom, categorie: $('#fe-cat').value, unite: $('#fe-unit').value });
+      closeSheetSilent();
+      if (nom !== FE.nom) { memHash = '/aliment/' + encodeURIComponent(nom); try { history.replaceState(null, '', '#' + memHash); } catch (e) {} routeChanged = true; }
+      render(); toast('Aliment modifié ✓');
+    } catch (e) { btn.disabled = false; box.textContent = e.message; box.hidden = false; }
+  }
 
   /* ----- déplacer un aliment d'un emplacement à un autre ----- */
   var MV = { nom: '', from: '' };
@@ -748,6 +863,8 @@
   document.addEventListener('click', function (ev) {
     var link = ev.target.closest('a[href^="#/"]');
     if (link) { ev.preventDefault(); nav(link.getAttribute('href')); return; }
+    if (ev.target.closest('[data-grip]')) return;
+    var sl = ev.target.closest('[data-sortlist]'); if (sl && sl.dataset.justDragged) return;
     var t = ev.target.closest('[data-act]'); if (!t) return;
     var act = t.dataset.act;
     switch (act) {
@@ -788,6 +905,32 @@
         confirmSheet('Supprimer cet emplacement ?', '« ' + de + ' » sera retiré de la liste.', 'Supprimer', true).then(function (ok) {
           if (!ok) return;
           safe(function () { return write('deleteEmplacement', { nom: de }); }).then(function () { render(); toast('Emplacement supprimé'); });
+        }); break; }
+      case 'food-edit': openFoodEdit(t.dataset.nom); break;
+      case 'food-save': saveFoodEdit(); break;
+      case 'ord-open': openOrdre(t.dataset.liste); break;
+      case 'ord-set': {
+        var ol = t.dataset.liste, om = t.dataset.mode; closeSheetSilent();
+        if (!data.ordres) data.ordres = {};
+        data.ordres[ol] = om;
+        safe(function () { return write('setOrdre', { liste: ol, mode: om }); }).then(function () { render(); toast('Ordre : ' + ORD_LABEL[om]); });
+        render(); break; }
+      case 'unit-add': openUnit(null); break;
+      case 'unit-edit': openUnit(t.dataset.unit); break;
+      case 'unit-save': {
+        var un = $('#x-unit-nom').value.trim(), ub = $('#x-save'), ue = $('#x-err');
+        if (!un) { ue.textContent = 'Donnez un nom à l’unité.'; ue.hidden = false; break; }
+        ub.disabled = true;
+        var uEdit = !!UNE.nom;
+        write(uEdit ? 'renameUnite' : 'addUnite', uEdit ? { ancien: UNE.nom, nouveau: un } : { nom: un })
+          .then(function () { closeSheetSilent(); render(); toast(uEdit ? 'Unité modifiée ✓' : 'Unité ajoutée ✓'); })
+          .catch(function (e) { ub.disabled = false; ue.textContent = e.message; ue.hidden = false; });
+        break; }
+      case 'unit-del': {
+        var du = UNE.nom;
+        confirmSheet('Supprimer cette unité ?', '« ' + du + ' » sera retirée de la liste.', 'Supprimer', true).then(function (ok) {
+          if (!ok) return;
+          safe(function () { return write('deleteUnite', { nom: du }); }).then(function () { render(); toast('Unité supprimée'); });
         }); break; }
       case 'cat-add': openCat(null); break;
       case 'cat-edit': openCat(t.dataset.cat); break;
@@ -899,6 +1042,16 @@
     if (t.dataset && t.dataset.alertToggle) {
       var nom = t.dataset.alertToggle, a = findAl(nom), on = t.checked; a.alerte = on; if (on && !a.seuil) a.seuil = 1; render();
       safe(function () { return write('setAlerte', { aliment: nom, alerte: on, seuil: a.seuil }); });
+    }
+    if (t.dataset && t.dataset.autoToggle) {
+      var an = t.dataset.autoToggle, aa = findAl(an), aon = t.checked;
+      var as = aa.seuilCourses == null ? (aa.alerte ? aa.seuil : 0) : aa.seuilCourses;
+      aa.autoCourses = aon; aa.seuilCourses = as; render();
+      safe(function () { return write('setAutoCourses', { aliment: an, auto: aon, seuil: as }); }).then(function () { render(); });
+    }
+    if (t.dataset && t.dataset.autoSeuil) {
+      var sn = t.dataset.autoSeuil, sa = findAl(sn), sv = Math.max(0, Number(String(t.value).replace(',', '.')) || 0); sa.seuilCourses = sv; render();
+      safe(function () { return write('setAutoCourses', { aliment: sn, auto: true, seuil: sv }); }).then(function () { render(); });
     }
     if (t.dataset && t.dataset.alertSeuil) {
       var n2 = t.dataset.alertSeuil, a2 = findAl(n2), s = Math.max(0, Number(String(t.value).replace(',', '.')) || 0); a2.seuil = s; render();

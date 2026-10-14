@@ -288,3 +288,9 @@ textarea.inp{height:92px;padding:12px 14px;resize:none}
 .sheet-c{max-height:92vh;overflow-y:auto}
 .menu-row .cico{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:18px}
 .menu-row .cico+span{flex:1}
+/* ---------- ranger une liste (glisser-déposer) ---------- */
+.grip{display:grid;place-items:center;width:26px;height:34px;flex:none !important;color:#9aa79d;touch-action:none;cursor:grab;margin:-6px -4px -6px -6px}
+.grip .ic{width:20px;height:20px;color:#9aa79d !important}
+[data-sortlist] .menu-row{position:relative;transition:box-shadow .15s}
+[data-sortlist] .menu-row.dragging{z-index:5;background:#fff;box-shadow:0 10px 24px rgba(60,90,70,.22);border-radius:12px;transition:none}
+.menu-row .grip + .ic{color:var(--teal)}

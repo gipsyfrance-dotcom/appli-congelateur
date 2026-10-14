@@ -13,7 +13,7 @@ Remplace la version AppSheet. Le Google Sheet « Inventaire Congélateur » rest
 | `apps-script/appsscript.json` | Réglages du script (fuseau Paris, accès web) |
 | `manifest.webmanifest`, `icon*.png/svg` | Installation sur l'écran d'accueil du téléphone (`icon-180.png` = icône iPhone, opaque ; `icon-192/512.png` = Android) |
 
-Onglets du Google Sheet : `Emplacements`, `Categories`, `Aliments`, `Mouvements`, `Courses`, `Depenses` (créé automatiquement).
+Onglets du Google Sheet : `Emplacements`, `Categories`, `Aliments`, `Mouvements`, `Courses`, `Depenses` et `Unites` (créés automatiquement). Les colonnes `AutoCourses` et `SeuilCourses` d'Aliments sont ajoutées automatiquement.
 
 **Tester sans rien brancher :** ouvrir `index.html` dans un navigateur → mode démo.
 
@@ -38,6 +38,10 @@ L'adresse de l'appli est publique, mais les données ne sortent qu'avec le **cod
 - Nouvel aliment créé directement depuis le formulaire de mouvement, avec création d'une nouvelle catégorie si besoin.
 - Écran « Emplacements » (menu Plus) : congélateur, frigo du garage, placards… ajouter, renommer (l'historique suit), supprimer si vide.
 - Écran « Catégories » (menu Plus) : ajouter, renommer (les aliments suivent), supprimer si vide. Noms affichés avec accents.
+- Écran « Unités » (menu Plus) : ajouter, renommer (les aliments suivent), supprimer si inutilisée.
+- Ordre d'affichage des emplacements, catégories et unités : personnalisé (glisser-déposer) ou de A à Z / de Z à A.
+- Fiche aliment : modifier le nom, la catégorie et l'unité (le nom suit dans l'historique et les courses) ; « Déplacer » d'un emplacement à un autre.
+- Ajout automatique à la liste de courses quand le stock descend sous un seuil choisi par aliment.
 - Après « Enregistrer », retour à la page d'où l'on vient ; emplacement « Coffre » proposé par défaut.
 - Dépenses de courses ventilées Sara / Jordana, budget mensuel et synthèse par mois et par année.
 - Alerte stock faible par aliment (interrupteur + seuil), pastille sur l'accueil.
