@@ -44,7 +44,7 @@
   };
   var catInfo = function (c) { return CAT[norm(c).toUpperCase()] || ['🍽️', '#e8f1f7']; };
   var niceCat = function (c) { c = String(c || '').trim().toLowerCase(); return c.charAt(0).toUpperCase() + c.slice(1); };
-  var UNITES = ['portions', 'sachets', 'pièces', 'boîtes', 'barquettes', 'plats', 'plaquettes', 'bocaux', 'bouteilles', 'g', 'kg', 'L'];
+  var UNITES = ['portions', 'sachets', 'pièces', 'boîtes', 'barquettes', 'plats', 'plaquettes', 'bocaux', 'pots', 'bouteilles', 'g', 'kg', 'L'];
 
   var P = {
     snow: '<path d="M3 11 12 4l9 7"/><path d="M5 9.5V20h14V9.5"/><path d="M8 17h8"/><path d="M9 17v-3.5h2V17M13 17v-2.5h2.2V17"/>',
