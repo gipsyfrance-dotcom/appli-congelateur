@@ -218,7 +218,7 @@
   }
   var gateError = '';
   function viewGate() {
-    return '<header class="hero">' + ico('snow', 'hero-ic') + '<div><h1>Mon garde-manger</h1><p>Première connexion</p></div></header>' +
+    return '<header class="hero">' + ico('chest', 'hero-ic') + '<div><h1>Mon garde-manger</h1><p>Première connexion</p></div></header>' +
       '<form data-form="token" class="card pad"><div class="field"><label for="g-code">Code d’accès</label>' +
       '<input class="inp" id="g-code" type="password" autocomplete="current-password" placeholder="Le code choisi dans Apps Script" required></div>' +
       (gateError ? '<p class="err">' + esc(gateError) + '</p>' : '') +
@@ -238,7 +238,7 @@
     }).join('');
     return (DEMO ? '<div class="demo-flag">Mode démo : données fictives, enregistrées seulement dans ce navigateur.</div>' : '') +
       (loadError && data ? '<div class="offline">Hors connexion : affichage de la dernière version enregistrée.</div>' : '') +
-      '<header class="hero">' + ico('snow', 'hero-ic') + '<div><h1>Mon garde-manger</h1><p>Tout votre stock au bout des doigts</p></div></header>' +
+      '<header class="hero">' + ico('chest', 'hero-ic') + '<div><h1>Mon garde-manger</h1><p>Tout votre stock au bout des doigts</p></div></header>' +
       '<a class="search" href="#/stock?focus=1">' + ico('search') + '<span>Rechercher un aliment</span></a>' +
       '<div class="scene">' + SCENE + '<p class="hand">De bons repas<br>toute l’année ! ♡</p></div>' +
       '<div class="bigs one">' +
