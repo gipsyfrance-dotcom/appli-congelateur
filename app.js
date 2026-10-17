@@ -64,7 +64,7 @@
   var UNITES = ['portions', 'sachets', 'pièces', 'boîtes', 'barquettes', 'plats', 'plaquettes', 'bocaux', 'pots', 'bouteilles', 'g', 'kg', 'L'];
 
   var P = {
-    snow: '<path d="M3 11 12 4l9 7"/><path d="M5 9.5V20h14V9.5"/><path d="M8 17h8"/><path d="M9 17v-3.5h2V17M13 17v-2.5h2.2V17"/>',
+    snow: '<path d="M8 20V5M4.5 8.5 8 5l3.5 3.5"/><path d="M16 4v15M12.5 15.5 16 19l3.5-3.5"/>',
     home: '<path d="M3 11 12 3l9 8v10h-6v-6H9v6H3V11z"/>',
     list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
     bell: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4l2-2zM10 21h4"/>',
