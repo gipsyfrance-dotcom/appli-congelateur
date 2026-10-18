@@ -476,8 +476,8 @@
       html += '<div class="card mv" style="margin-bottom:8px"><div class="sign ' + (m.type === 'Retrait' ? 'out' : 'in') + '">' + (m.type === 'Retrait' ? '−' : '+') + '</div><div style="flex:1;min-width:0">' +
         '<div><b>' + esc(m.aliment) + '</b> · ' + esc(qty(m.quantite, unit)) + '</div><div class="meta">' + esc(m.emplacement) + (m.personne ? ' · ' + esc(m.personne) : '') + '</div>' +
         (m.note ? '<div class="note">« ' + esc(m.note) + ' »</div>' : '') +
-        '<div class="mv-act"><button class="pillbtn" data-act="mv-edit" data-id="' + esc(m.id) + '">' + ico('pen') + 'Modifier</button>' +
-        '<button class="pillbtn danger" data-act="mv-cancel" data-id="' + esc(m.id) + '">' + ico('undo') + 'Annuler</button></div></div></div>';
+        '</div><div class="mv-act"><button class="mv-ico" data-act="mv-edit" data-id="' + esc(m.id) + '" aria-label="Modifier ce mouvement">' + ico('pen') + '</button>' +
+        '<button class="mv-ico" data-act="mv-cancel" data-id="' + esc(m.id) + '" aria-label="Annuler ce mouvement">' + ico('undo') + '</button></div></div>';
     });
     return header('Mouvements', (nom ? nom + ' · ' : '') + (UI.histAll ? 'Tout l’historique' : '30 derniers jours'), { back: true }) +
       (list.length ? html : '<div class="empty"><div class="big">🗒️</div>' + (all.length ? 'Aucun mouvement ces 30 derniers jours.' : 'Aucun mouvement enregistré.') + '</div>') +
