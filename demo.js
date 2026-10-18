@@ -156,6 +156,20 @@
     switch (action) {
       case 'bootstrap': break;
       case 'addMouvement': addMov(p); break;
+      case 'cancelMouvement': {
+        var ci = -1; db.mouvements.forEach(function (m, i) { if (m.id === p.id) ci = i; });
+        if (ci < 0) throw new Error('Mouvement introuvable (déjà annulé ?).');
+        var cm = db.mouvements[ci];
+        if (cm.type === 'Ajout' && stockOf(cm.aliment, cm.emplacement) - cm.quantite < -1e-9) throw new Error("Impossible d'annuler cet ajout : une partie a déjà été retirée du stock.");
+        db.mouvements.splice(ci, 1); break; }
+      case 'updateMouvement': {
+        var nq = Number(String(p.quantite).replace(',', '.'));
+        if (!(nq > 0)) throw new Error('La quantité doit être supérieure à zéro.');
+        var um = db.mouvements.filter(function (m) { return m.id === p.id; })[0];
+        if (!um) throw new Error('Mouvement introuvable (déjà annulé ?).');
+        var apres = stockOf(um.aliment, um.emplacement) + (um.type === 'Retrait' ? um.quantite - nq : nq - um.quantite);
+        if (apres < -1e-9) throw new Error(um.type === 'Retrait' ? "Il n'y en a pas assez dans cet emplacement pour retirer cette quantité." : "Impossible : une partie de cet ajout a déjà été retirée du stock.");
+        um.quantite = nq; if (um.type === 'Retrait') checkAuto(um.aliment); break; }
       case 'clearStock':
         var dispo = stockOf(p.aliment, p.emplacement);
         if (dispo <= 0) throw new Error('Rien à retirer ici.');

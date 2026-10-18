@@ -83,6 +83,7 @@
     sort: '<path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"/>',
     grip: '<path d="M5 8h14M5 12h14M5 16h14"/>',
     pen: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+    undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
     ruler: '<path d="M3 17 17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
     key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
@@ -191,10 +192,10 @@
   }
   function openSheet(html) { var s = $('#sheet'); s.innerHTML = '<div class="sheet-bg" data-act="closesheet"></div><div class="sheet-c">' + html + '</div>'; s.classList.add('open'); }
   function closeSheet() { $('#sheet').classList.remove('open'); if (sheetResolve) { var r = sheetResolve; sheetResolve = null; r(false); } }
-  function confirmSheet(title, text, ok, danger) {
+  function confirmSheet(title, text, ok, danger, cancelLabel) {
     return new Promise(function (resolve) {
       sheetResolve = resolve;
-      openSheet('<h3>' + esc(title) + '</h3><p>' + esc(text) + '</p><div class="btn-row"><button class="btn ghost sm" data-act="sheet-cancel">Annuler</button><button class="btn sm ' + (danger ? 'ret' : '') + '" data-act="sheet-ok">' + esc(ok) + '</button></div>');
+      openSheet('<h3>' + esc(title) + '</h3><p>' + esc(text) + '</p><div class="btn-row"><button class="btn ghost sm" data-act="sheet-cancel">' + esc(cancelLabel || 'Annuler') + '</button><button class="btn sm ' + (danger ? 'ret' : '') + '" data-act="sheet-ok">' + esc(ok) + '</button></div>');
     });
   }
   function foodChips(a, empFilter) {
@@ -474,12 +475,43 @@
       var a = findAl(m.aliment), unit = a ? a.unite : '';
       html += '<div class="card mv" style="margin-bottom:8px"><div class="sign ' + (m.type === 'Retrait' ? 'out' : 'in') + '">' + (m.type === 'Retrait' ? '−' : '+') + '</div><div style="flex:1;min-width:0">' +
         '<div><b>' + esc(m.aliment) + '</b> · ' + esc(qty(m.quantite, unit)) + '</div><div class="meta">' + esc(m.emplacement) + (m.personne ? ' · ' + esc(m.personne) : '') + '</div>' +
-        (m.note ? '<div class="note">« ' + esc(m.note) + ' »</div>' : '') + '</div></div>';
+        (m.note ? '<div class="note">« ' + esc(m.note) + ' »</div>' : '') +
+        '<div class="mv-act"><button class="pillbtn" data-act="mv-edit" data-id="' + esc(m.id) + '">' + ico('pen') + 'Modifier</button>' +
+        '<button class="pillbtn danger" data-act="mv-cancel" data-id="' + esc(m.id) + '">' + ico('undo') + 'Annuler</button></div></div></div>';
     });
     return header('Mouvements', (nom ? nom + ' · ' : '') + (UI.histAll ? 'Tout l’historique' : '30 derniers jours'), { back: true }) +
       (list.length ? html : '<div class="empty"><div class="big">🗒️</div>' + (all.length ? 'Aucun mouvement ces 30 derniers jours.' : 'Aucun mouvement enregistré.') + '</div>') +
       (older > 0 ? '<button class="more-link" data-act="hist-all">Voir les mouvements plus anciens (' + older + ')</button>' : '') +
       (UI.histAll && all.length ? '<button class="more-link" data-act="hist-30">Revenir aux 30 derniers jours</button>' : '');
+  }
+
+
+  /* ----- annuler / modifier un mouvement (depuis l'historique) ----- */
+  var MVE = { id: '' };
+  var findMv = function (id) { return data.mouvements.filter(function (m) { return m.id === id; })[0]; };
+  function mvLabel(m) { var a = findAl(m.aliment); return (m.type === 'Retrait' ? 'Retrait' : 'Ajout') + ' de ' + qty(m.quantite, a ? a.unite : '') + ' · ' + m.aliment + ' · ' + m.emplacement; }
+  function openMvEdit(id) {
+    var m = findMv(id); if (!m) return;
+    MVE.id = id;
+    var a = findAl(m.aliment);
+    openSheet('<h3>Modifier la quantité</h3><p class="sub">' + esc(mvLabel(m)) + '</p>' +
+      '<div class="field"><label for="me-q">Quantité' + (a && a.unite ? ' (' + esc(unitLabel(2, a.unite)) + ')' : '') + '</label><input class="inp" id="me-q" type="text" inputmode="decimal" autocomplete="off" value="' + esc(fmtNum(m.quantite)) + '"></div>' +
+      '<p class="err" id="me-err" hidden></p><button class="btn" data-act="mv-save" id="me-save">Enregistrer</button>' +
+      '<button class="btn ghost sm" style="margin-top:10px" data-act="sheet-cancel">Fermer</button>');
+  }
+  async function saveMvEdit() {
+    var q = Number(String($('#me-q').value).replace(',', '.')), box = $('#me-err'), btn = $('#me-save');
+    if (!(q > 0)) { box.textContent = 'La quantité doit être supérieure à zéro.'; box.hidden = false; return; }
+    btn.disabled = true;
+    try { await write('updateMouvement', { id: MVE.id, quantite: q }); closeSheetSilent(); render(); toast('Mouvement modifié ✓'); }
+    catch (e) { btn.disabled = false; box.textContent = e.message; box.hidden = false; }
+  }
+  function cancelMv(id) {
+    var m = findMv(id); if (!m) return;
+    confirmSheet('Annuler ce mouvement ?', mvLabel(m) + '. Il sera retiré de l’historique et le stock sera corrigé.', 'Oui, annuler', true, 'Non, garder').then(function (ok) {
+      if (!ok) return;
+      safe(function () { return write('cancelMouvement', { id: id }); }).then(function (r) { if (!r) return; render(); toast('Mouvement annulé ✓'); });
+    });
   }
 
   /* ----- catégories ----- */
@@ -906,6 +938,9 @@
           if (!ok) return;
           safe(function () { return write('deleteEmplacement', { nom: de }); }).then(function () { render(); toast('Emplacement supprimé'); });
         }); break; }
+      case 'mv-edit': openMvEdit(t.dataset.id); break;
+      case 'mv-save': saveMvEdit(); break;
+      case 'mv-cancel': cancelMv(t.dataset.id); break;
       case 'food-edit': openFoodEdit(t.dataset.nom); break;
       case 'food-save': saveFoodEdit(); break;
       case 'ord-open': openOrdre(t.dataset.liste); break;

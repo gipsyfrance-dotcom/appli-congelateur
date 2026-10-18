@@ -294,3 +294,7 @@ textarea.inp{height:92px;padding:12px 14px;resize:none}
 [data-sortlist] .menu-row{position:relative;transition:box-shadow .15s}
 [data-sortlist] .menu-row.dragging{z-index:5;background:#fff;box-shadow:0 10px 24px rgba(60,90,70,.22);border-radius:12px;transition:none}
 .menu-row .grip + .ic{color:var(--teal)}
+
+.mv .mv-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.mv .mv-act .pillbtn{padding:6px 10px;font-size:13px}
+.pillbtn.danger{color:var(--salmon-d);border-color:#f3c6c2}

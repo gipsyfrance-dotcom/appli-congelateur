@@ -57,6 +57,8 @@ function doPost(e) {
       case 'reorder': reorder_(req); break;
       case 'updateAliment': updateAliment_(req); break;
       case 'setAutoCourses': setAutoCourses_(req); break;
+      case 'cancelMouvement': cancelMouvement_(req); break;
+      case 'updateMouvement': updateMouvement_(req); break;
       default: return json_({ ok: false, error: 'Action inconnue : ' + req.action });
     }
     SpreadsheetApp.flush();
@@ -99,13 +101,14 @@ function state_() {
   var mDate = col_(mv, ['date']), mAl = col_(mv, ['aliment']), mTy = col_(mv, ['type']), mQt = col_(mv, ['quantite']),
       mEm = col_(mv, ['emplacement']), mPe = col_(mv, ['personne']), mNo = col_(mv, ['note']);
   var mouvements = [];
-  mv.rows.forEach(function (r) {
+  var mId = col_(mv, ['idmouvement', 'id']);
+  mv.rows.forEach(function (r, i) {
     var nom = String(r[mAl] || '').trim(), emp2 = String(r[mEm] || '').trim(), q = num_(r[mQt]);
     if (!nom || !q) return;
     var type = String(r[mTy] || '').trim();
     var a = aliments[nom];
     if (a) a._per[emp2] = (a._per[emp2] || 0) + (type === 'Retrait' ? -q : q);
-    mouvements.push({ date: date_(r[mDate]), aliment: nom, type: type, quantite: q, emplacement: emp2, personne: mPe < 0 ? '' : String(r[mPe] || '').trim(), note: mNo < 0 ? '' : String(r[mNo] || '').trim() });
+    mouvements.push({ id: (mId < 0 ? '' : String(r[mId] || '').trim()) || ('row' + (i + 2)), date: date_(r[mDate]), aliment: nom, type: type, quantite: q, emplacement: emp2, personne: mPe < 0 ? '' : String(r[mPe] || '').trim(), note: mNo < 0 ? '' : String(r[mNo] || '').trim() });
   });
   mouvements.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
 
@@ -274,6 +277,43 @@ function addMouvement_(p) {
     personne: p.personne || '', note: p.note || '', idmouvement: Utilities.getUuid()
   }, { date: ['date'], aliment: ['aliment'], type: ['type'], quantite: ['quantite'], emplacement: ['emplacement'], personne: ['personne'], note: ['note'], idmouvement: ['idmouvement', 'id'] });
   if (p.type === 'Retrait') checkAutoCourses_(p.aliment);
+}
+
+/* ---------------------------- Annuler / modifier un mouvement ---------------------------- */
+
+function findMouvementRow_(t, id) {
+  var kId = col_(t, ['idmouvement', 'id']);
+  for (var i = 0; i < t.rows.length; i++) {
+    var rid = (kId < 0 ? '' : String(t.rows[i][kId] || '').trim()) || ('row' + (i + 2));
+    if (rid === id) return i + 2;
+  }
+  return -1;
+}
+
+/** Annule un mouvement : la ligne est retirée de l'historique et le stock est recalculé. */
+function cancelMouvement_(p) {
+  var t = readTable_(CFG.TABS.mouvements), row = findMouvementRow_(t, String(p.id || ''));
+  if (row < 0) throw new Error('Mouvement introuvable (déjà annulé ?).');
+  var r = t.rows[row - 2];
+  var al = String(r[col_(t, ['aliment'])] || '').trim(), em = String(r[col_(t, ['emplacement'])] || '').trim();
+  var ty = String(r[col_(t, ['type'])] || '').trim(), q = num_(r[col_(t, ['quantite'])]);
+  if (ty === 'Ajout' && stockAt_(al, em) - q < -1e-9) throw new Error("Impossible d'annuler cet ajout : une partie a déjà été retirée du stock.");
+  t.sh.deleteRow(row);
+}
+
+/** Change la quantité d'un mouvement (le stock est recalculé). */
+function updateMouvement_(p) {
+  var q = num_(p.quantite);
+  if (!(q > 0)) throw new Error('La quantité doit être supérieure à zéro.');
+  var t = readTable_(CFG.TABS.mouvements), row = findMouvementRow_(t, String(p.id || ''));
+  if (row < 0) throw new Error('Mouvement introuvable (déjà annulé ?).');
+  var r = t.rows[row - 2], cQt = col_(t, ['quantite']);
+  var al = String(r[col_(t, ['aliment'])] || '').trim(), em = String(r[col_(t, ['emplacement'])] || '').trim();
+  var ty = String(r[col_(t, ['type'])] || '').trim(), old = num_(r[cQt]);
+  var apres = stockAt_(al, em) + (ty === 'Retrait' ? old - q : q - old);
+  if (apres < -1e-9) throw new Error(ty === 'Retrait' ? "Il n'y en a pas assez dans cet emplacement pour retirer cette quantité." : "Impossible : une partie de cet ajout a déjà été retirée du stock.");
+  t.sh.getRange(row, cQt + 1).setValue(q);
+  if (ty === 'Retrait') checkAutoCourses_(al);
 }
 
 /* ---------------------------- Catégories ---------------------------- */
