@@ -181,9 +181,13 @@
       case 'addCourse':
         var art = String(p.article || '').trim(); if (!art) throw new Error('Écrivez un article.');
         if (db.courses.some(function (c) { return !c.achete && norm(c.article) === norm(art); })) { var e = new Error('Cet article est déjà dans la liste.'); e.code = 'DUP'; throw e; }
+        var bo = db.courses.filter(function (c) { return c.achete && norm(c.article) === norm(art); });
+        if (bo.length) { bo[0].achete = false; bo[0].ajoutePar = p.ajoutePar || ''; bo[0].date = today(); db.courses = db.courses.filter(function (c) { return bo.indexOf(c) < 1; }); break; }
         db.courses.push({ id: uid(), article: art, achete: false, ajoutePar: p.ajoutePar || '', date: today() }); break;
       case 'setAchete':
-        db.courses.forEach(function (c) { if (c.id === p.id) c.achete = !!p.achete; }); break;
+        db.courses.forEach(function (c) { if (c.id === p.id) c.achete = !!p.achete; });
+        if (p.achete) { var kc = db.courses.filter(function (c) { return c.id === p.id; })[0]; if (kc) db.courses = db.courses.filter(function (c) { return c === kc || !(c.achete && norm(c.article) === norm(kc.article)); }); }
+        break;
       case 'deleteAliment':
         var al = compute().aliments.filter(function (x) { return x.nom === p.aliment; })[0];
         if (!al) throw new Error('Aliment introuvable.');

@@ -425,6 +425,17 @@ function addCourse_(p) {
   var kAr = col_(co, ['article'], 0), kAc = col_(co, ['achete']);
   var dup = co.rows.some(function (r) { return normName_(r[kAr]) === normName_(art) && !(kAc >= 0 && bool_(r[kAc])); });
   if (dup) { var e = new Error('Cet article est déjà dans la liste.'); e.code = 'DUP'; throw e; }
+  // Un article déjà acheté du même nom est remis dans la liste (pas de nouvelle ligne) ; les doublons éventuels sont fusionnés.
+  var bought = [];
+  co.rows.forEach(function (r, i) { if (normName_(r[kAr]) === normName_(art) && kAc >= 0 && bool_(r[kAc])) bought.push(i + 2); });
+  if (bought.length) {
+    var kPar = col_(co, ['ajoutepar']), kDat = col_(co, ['dateajout', 'datedajout', 'date']);
+    co.sh.getRange(bought[0], kAc + 1).setValue(false);
+    if (kPar >= 0) co.sh.getRange(bought[0], kPar + 1).setValue(p.ajoutePar || '');
+    if (kDat >= 0) co.sh.getRange(bought[0], kDat + 1).setValue(dateObj_(todayStr_()));
+    for (var j = bought.length - 1; j >= 1; j--) co.sh.deleteRow(bought[j]);
+    return;
+  }
   appendRow_(co, { idcourses: Utilities.getUuid(), article: art, achete: false, ajoutepar: p.ajoutePar || '', dateajout: dateObj_(todayStr_()) },
     { idcourses: ['idcourses', 'idcourse', 'id'], article: ['article'], achete: ['achete'], ajoutepar: ['ajoutepar'], dateajout: ['dateajout', 'datedajout', 'date'] });
 }
@@ -435,8 +446,19 @@ function setAchete_(p) {
   if (kAc < 0) throw new Error('Colonne « Acheté » introuvable dans Courses.');
   for (var i = 0; i < co.rows.length; i++) {
     var id = kId < 0 ? '' : String(co.rows[i][kId] || '').trim();
-    if ((id || ('row' + (i + 2))) === p.id) { co.sh.getRange(i + 2, kAc + 1).setValue(!!p.achete); return; }
+    if ((id || ('row' + (i + 2))) === p.id) {
+      co.sh.getRange(i + 2, kAc + 1).setValue(!!p.achete);
+      if (p.achete) mergeBought_(co, i, kAc);
+      return;
+    }
   }
+}
+
+/** Garde une seule ligne « acheté » par article : supprime les anciennes lignes achetées du même nom. */
+function mergeBought_(co, keepIdx, kAc) {
+  var kAr = col_(co, ['article'], 0), nom = normName_(co.rows[keepIdx][kAr]), del = [];
+  co.rows.forEach(function (r, i) { if (i !== keepIdx && normName_(r[kAr]) === nom && bool_(r[kAc])) del.push(i + 2); });
+  for (var j = del.length - 1; j >= 0; j--) co.sh.deleteRow(del[j]);
 }
 
 function deleteAliment_(p) {

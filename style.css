@@ -299,3 +299,4 @@ textarea.inp{height:92px;padding:12px 14px;resize:none}
 .mv .mv-ico{width:34px;height:34px;border:0;background:transparent;border-radius:10px;display:grid;place-items:center;color:var(--ink2);padding:0}
 .mv .mv-ico .ic{width:19px;height:19px}
 .mv .mv-ico:active{background:#eef3f1}
+.sugg{margin:-6px 0 14px}

@@ -453,14 +453,39 @@
       '<p class="err" id="x-err" hidden></p><button class="btn" data-act="budget-save" id="x-save">Enregistrer</button>');
   }
 
+  /* ----- articles déjà achetés : une seule ligne par nom, proposés quand on tape ----- */
+  function boughtUnique() {
+    var seen = {}, out = [];
+    data.courses.slice().reverse().forEach(function (c) {
+      if (!c.achete) return;
+      var k = norm(c.article); if (seen[k]) return; seen[k] = 1; out.push(c);
+    });
+    return out;
+  }
+  function suggHtml(q) {
+    var nq = norm(q); if (!nq) return '';
+    var onList = {}; toBuy().forEach(function (c) { onList[norm(c.article)] = 1; });
+    var list = boughtUnique().filter(function (c) { var k = norm(c.article); return !onList[k] && k.indexOf(nq) >= 0; }).slice(0, 6);
+    if (!list.length) return '';
+    return '<div class="card list sugg">' + list.map(function (c) {
+      return '<button class="menu-row" type="button" data-act="sugg-add" data-nom="' + esc(c.article) + '">' + ico('basket') + '<span>' + esc(c.article) + '<small style="display:block;color:var(--ink2);font-weight:400">Remettre dans la liste</small></span>' + ico('plus') + '</button>';
+    }).join('') + '</div>';
+  }
+  function bringBack(art) {
+    var k = norm(art), old = data.courses.filter(function (c) { return c.achete && norm(c.article) === k; });
+    if (old.length) { old[0].achete = false; old[0].ajoutePar = me; old[0].date = today(); data.courses = data.courses.filter(function (c) { return old.indexOf(c) < 1; }); }
+    else data.courses.push({ id: 'tmp' + Date.now(), article: art, achete: false, ajoutePar: me, date: today() });
+    render();
+    return safe(function () { return write('addCourse', { article: art, ajoutePar: me }); });
+  }
+
   function buyBody() {
-    var buy = toBuy(), bought = data.courses.filter(function (c) { return c.achete; });
-    var opts = data.aliments.map(function (a) { return '<option value="' + esc(a.nom) + '">'; }).join('');
-    return '<form data-form="course" class="addline"><input class="inp" id="c-new" list="c-list" placeholder="Ajouter un article" autocomplete="off" maxlength="80"><datalist id="c-list">' + opts + '</datalist>' +
-      '<button class="btn" type="submit" aria-label="Ajouter">' + ico('plus') + '</button></form>' +
+    var buy = toBuy(), bought = boughtUnique();
+    return '<form data-form="course" class="addline"><input class="inp" id="c-new" placeholder="Ajouter un article" autocomplete="off" maxlength="80">' +
+      '<button class="btn" type="submit" aria-label="Ajouter">' + ico('plus') + '</button></form><div id="c-sugg"></div>' +
       (buy.length ? '<div class="card list" id="todo-list">' + buy.map(todoRow).join('') + '</div>' : '<div class="empty"><div class="big">🛒</div>La liste est vide.</div>') +
       (bought.length ? '<button class="more-link" data-act="toggle-bought">' + (UI.showBought ? 'Masquer' : 'Voir') + ' les articles déjà achetés (' + bought.length + ')</button>' +
-        (UI.showBought ? '<div class="card list" style="margin-top:8px">' + bought.slice(-15).reverse().map(todoRow).join('') + '</div>' : '') : '');
+        (UI.showBought ? '<div class="card list" style="margin-top:8px">' + bought.slice(0, 15).map(todoRow).join('') + '</div>' : '') : '');
   }
 
   function viewHistory(nom) {
@@ -1004,6 +1029,7 @@
       case 'showall': UI.showAll = !UI.showAll; $('#stock-list').innerHTML = stockListHtml(); break;
       case 'refresh': toast('Actualisation…'); load(true); break;
       case 'setme': me = t.dataset.p; ls.set('cg_me', me); render(); break;
+      case 'sugg-add': bringBack(t.dataset.nom); break;
       case 'toggle-bought': UI.showBought = !UI.showBought; render(); break;
       case 'demo-reset': window.DemoApi.reset(); load(true); toast('Démo réinitialisée'); break;
       case 'change-token': ls.set('cg_token', ''); gateError = ''; render(); break;
@@ -1046,8 +1072,7 @@
     if (kind === 'course') {
       var inp = $('#c-new'), art = inp.value.trim(); if (!art) return;
       if (inCourses(art)) { toast('Déjà dans la liste'); inp.value = ''; return; }
-      data.courses.push({ id: 'tmp' + Date.now(), article: art, achete: false, ajoutePar: me, date: today() }); render();
-      safe(function () { return write('addCourse', { article: art, ajoutePar: me }); });
+      bringBack(art);
     }
   });
 
@@ -1057,6 +1082,7 @@
       UI.stockQ = t.value; $('#stock-list').innerHTML = stockListHtml();
       var n = stockItems().length; $('#stock-count').textContent = n + ' résultat' + (n > 1 ? 's' : '');
     }
+    if (t.id === 'c-new') { var sg = $('#c-sugg'); if (sg) sg.innerHTML = suggHtml(t.value); }
     if (t.id === 'f-note') $('#f-count').textContent = t.value.length;
     if (t.id === 'f-search') { F.q = t.value; $('#f-sugs').innerHTML = sugsHtml(); }
     if (t.dataset && t.dataset.person) updateExpTotal();
