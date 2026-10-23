@@ -97,7 +97,7 @@
 
   /* ============================== État ============================== */
   var data = ls.get('cg_data', null);
-  var loading = false, loadError = '', pending = 0, dirty = false;
+  var loading = false, loadError = '', pending = 0, dirty = false, epoch = 0;
   var me = ls.get('cg_me', '');
   var UI = { stockQ: '', filt: { emp: '', cat: '' }, showAll: false, showBought: false, low: false, cTab: 'buy', month: '', year: 0, synthFrom: 'more' };
   var EXP = { id: null };
@@ -126,8 +126,9 @@
   async function load(silent) {
     if (!silent && !data) { loading = true; render(); }
     try {
+      var ep = epoch;   // une lecture lancée avant la fin d'une écriture est périmée : on l'ignore
       var r = await api('bootstrap');
-      if (pending === 0) { data = r.data; ls.set('cg_data', data); }
+      if (pending === 0 && ep === epoch) { data = r.data; ls.set('cg_data', data); }
       loadError = '';
     } catch (e) {
       if (e.code === 'AUTH') { ls.set('cg_token', ''); data = null; ls.set('cg_data', null); gateError = e.message; }
@@ -143,7 +144,7 @@
       if (r.data) { if (pending === 1) { data = r.data; ls.set('cg_data', data); } else { dirty = true; } }
       return r;
     } finally {
-      pending--;
+      pending--; epoch++;
       if (pending === 0 && dirty) { dirty = false; load(true); }
     }
   }
@@ -186,9 +187,9 @@
     return '<header class="top">' + (o.back ? '<button class="icon-btn" data-act="back" aria-label="Retour">' + ico('back') + '</button>' : '') +
       '<div class="top-t"><h1>' + esc(title) + '</h1>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div>' + (o.right || '') + '</header>';
   }
-  function toast(msg) {
+  function toast(msg, ms) {
     var t = $('#toast'); t.textContent = msg; t.classList.add('show');
-    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 2400);
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, ms || 2400);
   }
   function openSheet(html) { var s = $('#sheet'); s.innerHTML = '<div class="sheet-bg" data-act="closesheet"></div><div class="sheet-c">' + html + '</div>'; s.classList.add('open'); }
   function closeSheet() { $('#sheet').classList.remove('open'); if (sheetResolve) { var r = sheetResolve; sheetResolve = null; r(false); } }
@@ -501,8 +502,8 @@
       html += '<div class="card mv" style="margin-bottom:8px"><div class="sign ' + (m.type === 'Retrait' ? 'out' : 'in') + '">' + (m.type === 'Retrait' ? '−' : '+') + '</div><div style="flex:1;min-width:0">' +
         '<div><b>' + esc(m.aliment) + '</b> · ' + esc(qty(m.quantite, unit)) + '</div><div class="meta">' + esc(m.emplacement) + (m.personne ? ' · ' + esc(m.personne) : '') + '</div>' +
         (m.note ? '<div class="note">« ' + esc(m.note) + ' »</div>' : '') +
-        '</div><div class="mv-act"><button class="mv-ico" data-act="mv-edit" data-id="' + esc(m.id) + '" aria-label="Modifier ce mouvement">' + ico('pen') + '</button>' +
-        '<button class="mv-ico" data-act="mv-cancel" data-id="' + esc(m.id) + '" aria-label="Annuler ce mouvement">' + ico('undo') + '</button></div></div>';
+        '</div>' + (String(m.id).indexOf('tmp') === 0 ? '' : '<div class="mv-act"><button class="mv-ico" data-act="mv-edit" data-id="' + esc(m.id) + '" aria-label="Modifier ce mouvement">' + ico('pen') + '</button>' +
+        '<button class="mv-ico" data-act="mv-cancel" data-id="' + esc(m.id) + '" aria-label="Annuler ce mouvement">' + ico('undo') + '</button></div>') + '</div>';
     });
     return header('Mouvements', (nom ? nom + ' · ' : '') + (UI.histAll ? 'Tout l’historique' : '30 derniers jours'), { back: true }) +
       (list.length ? html : '<div class="empty"><div class="big">🗒️</div>' + (all.length ? 'Aucun mouvement ces 30 derniers jours.' : 'Aucun mouvement enregistré.') + '</div>') +
@@ -765,6 +766,17 @@
     }
     return '';
   }
+  function applyMoveLocal(p) {
+    var a = findAl(p.aliment); if (!a) return;
+    var d = p.type === 'Retrait' ? -p.quantite : p.quantite, e = a.emplacements.filter(function (x) { return x.nom === p.emplacement; })[0];
+    if (e) e.qte = Math.round((e.qte + d) * 1000) / 1000; else a.emplacements.push({ nom: p.emplacement, qte: d });
+    a.emplacements = a.emplacements.filter(function (x) { return x.qte !== 0; });
+    a.stock = a.emplacements.reduce(function (t, x) { return t + x.qte; }, 0);
+    if (p.type === 'Ajout' && p.unite !== undefined) a.unite = p.unite || a.unite;
+    data.mouvements.unshift({ id: 'tmp' + Date.now(), date: p.date, aliment: p.aliment, type: p.type, quantite: p.quantite, emplacement: p.emplacement, personne: p.personne || '', note: p.note || '' });
+    ls.set('cg_data', data);
+  }
+
   async function submitMove() {
     syncForm();
     var err = validateMove(), box = $('#f-err');
@@ -774,6 +786,13 @@
     var payload = { type: F.type, aliment: F.aliment, quantite: Number(String(F.qte).replace(',', '.')), unite: F.unite, emplacement: F.emp, date: F.date, personne: F.pers, note: F.note.trim() };
     if (F.aliment === '__new__') { payload.aliment = ''; payload.nouvelAliment = F.cat === '__newcat__' ? { nom: F.nom.trim(), categorie: F.newcat.trim(), nouvelleCategorie: true } : { nom: F.nom.trim(), categorie: F.cat }; }
     if (F.pers) { me = F.pers; ls.set('cg_me', me); }
+    if (F.aliment !== '__new__' && findAl(F.aliment)) {
+      // Aliment existant : on met l'écran à jour tout de suite, le serveur confirme en arrière-plan.
+      applyMoveLocal(payload);
+      toast(F.type === 'Ajout' ? 'Ajouté ✓' : 'Retiré ✓'); F = null; goBack();
+      safe(function () { return write('addMouvement', payload); });
+      return;
+    }
     try { await write('addMouvement', payload); toast(F.type === 'Ajout' ? 'Ajouté ✓' : 'Retiré ✓'); F = null; goBack(); }
     catch (e) { btn.disabled = false; box.textContent = e.message; box.hidden = false; }
   }
@@ -915,7 +934,7 @@
     } catch (e) { btn.disabled = false; box.textContent = e.message; box.hidden = false; load(true); }
   }
 
-  async function safe(fn) { try { return await fn(); } catch (e) { toast(e.message || 'Erreur'); load(true); } }
+  async function safe(fn) { try { return await fn(); } catch (e) { toast(e.message || 'Erreur', 6000); load(true); } }
 
   document.addEventListener('click', function (ev) {
     var link = ev.target.closest('a[href^="#/"]');
