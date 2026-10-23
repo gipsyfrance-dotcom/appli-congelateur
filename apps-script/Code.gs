@@ -31,7 +31,8 @@ function doPost(e) {
     if (!code) return json_({ ok: false, code: 'AUTH', error: "Code d'accès non défini dans le script (propriété ACCESS_CODE)." });
     if (String(req.token || '') !== String(code)) return json_({ ok: false, code: 'AUTH', error: "Code d'accès incorrect." });
 
-    lock.waitLock(20000);
+    // La simple lecture (bootstrap) ne prend pas le verrou : seules les écritures se mettent en file.
+    if (req.action !== 'bootstrap') lock.waitLock(20000);
     switch (req.action) {
       case 'bootstrap': break;
       case 'addMouvement': addMouvement_(req); break;
@@ -65,7 +66,9 @@ function doPost(e) {
     return json_({ ok: true, data: state_() });
   } catch (err) {
     var dup = err && err.code === 'DUP';
-    return json_({ ok: false, code: dup ? 'DUP' : '', error: String(err && err.message ? err.message : err) });
+    var msg = String(err && err.message ? err.message : err);
+    if (/verrouillage|lock/i.test(msg)) msg = "Le serveur est occupé. Patientez quelques secondes, puis réessayez (vérifiez d'abord si le mouvement n'est pas déjà enregistré).";
+    return json_({ ok: false, code: dup ? 'DUP' : '', error: msg });
   } finally {
     try { lock.releaseLock(); } catch (x) {}
   }
@@ -239,28 +242,36 @@ function stockAt_(aliment, emplacement) {
 
 /* ---------------------------- Écriture ---------------------------- */
 
+/** Liste des valeurs (non vides) d'une colonne d'un onglet. */
+function colList_(tab, aliases) {
+  var t = readTable_(tab), c = col_(t, aliases, 0);
+  return t.rows.map(function (r) { return String(r[c] || '').trim(); }).filter(Boolean);
+}
+
 function addMouvement_(p) {
   if (p.type !== 'Ajout' && p.type !== 'Retrait') throw new Error('Type de mouvement invalide.');
   var q = num_(p.quantite);
   if (!(q > 0)) throw new Error('La quantité doit être supérieure à zéro.');
-  var st = state_();
-  if (st.emplacements.indexOf(p.emplacement) < 0) throw new Error('Choisissez un emplacement.');
+  var emps = colList_(CFG.TABS.emplacements, ['nom', 'emplacement', 'nomemplacement']);
+  var names = colList_(CFG.TABS.aliments, ['nom', 'aliment']);
+  if (emps.indexOf(p.emplacement) < 0) throw new Error('Choisissez un emplacement.');
 
   if (p.nouvelAliment) {
     var nom = String(p.nouvelAliment.nom || '').trim();
     if (!nom) throw new Error("Donnez un nom à l'aliment.");
-    if (st.aliments.some(function (a) { return normName_(a.nom) === normName_(nom); })) throw new Error('Cet aliment existe déjà : choisissez-le dans la liste.');
+    if (names.some(function (n) { return normName_(n) === normName_(nom); })) throw new Error('Cet aliment existe déjà : choisissez-le dans la liste.');
     var catName = String(p.nouvelAliment.categorie || '').trim();
+    var cats = colList_(CFG.TABS.categories, ['nom', 'categorie', 'nomcategorie']);
     if (p.nouvelAliment.nouvelleCategorie) {
       if (!catName) throw new Error('Donnez un nom à la nouvelle catégorie.');
-      var exist = st.categories.filter(function (c) { return normName_(c) === normName_(catName); })[0];
+      var exist = cats.filter(function (c) { return normName_(c) === normName_(catName); })[0];
       if (exist) catName = exist; else addCategorie_({ nom: catName });
-    } else if (st.categories.indexOf(catName) < 0) throw new Error('Choisissez une catégorie.');
+    } else if (cats.indexOf(catName) < 0) throw new Error('Choisissez une catégorie.');
     var al = readTable_(CFG.TABS.aliments);
     appendRow_(al, { nom: nom, categorie: catName, alerteactivee: false, seuilalerte: 1, unite: p.unite || '' }, { nom: ['nom', 'aliment'], categorie: ['categorie'], alerteactivee: ['alerteactivee', 'alerte'], seuilalerte: ['seuilalerte', 'seuildalerte', 'seuil'], unite: ['unite'] });
     p.aliment = nom;
   } else {
-    if (!st.aliments.some(function (a) { return a.nom === p.aliment; })) throw new Error('Aliment introuvable.');
+    if (names.indexOf(p.aliment) < 0) throw new Error('Aliment introuvable.');
   }
 
   if (p.type === 'Retrait') {
@@ -617,6 +628,9 @@ function setAutoCourses_(p) {
 }
 
 function checkAutoCourses_(nom) {
+  // Vérification rapide : on ne calcule tout l'état que si l'ajout automatique est activé pour cet aliment.
+  var alT = readTable_(CFG.TABS.aliments), kN = col_(alT, ['nom', 'aliment'], 0), kA = col_(alT, ['autocourses']);
+  if (kA < 0 || !alT.rows.some(function (r) { return String(r[kN] || '').trim() === nom && bool_(r[kA]); })) return;
   var st = state_(), a = st.aliments.filter(function (x) { return x.nom === nom; })[0];
   if (!a || !a.autoCourses) return;
   var seuil = a.seuilCourses === null ? a.seuil : a.seuilCourses;
