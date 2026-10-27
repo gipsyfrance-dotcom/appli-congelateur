@@ -1,8 +1,11 @@
+/*! Mon garde-manger · © 2026 Sara Picaud — Tous droits réservés. Reproduction, copie ou réutilisation interdites sans autorisation écrite (voir LICENSE). */
 // Mode démo : mêmes actions que le script Google, mais en mémoire (sauvegardé dans ce navigateur uniquement).
 (function () {
   'use strict';
-  var KEY = 'cg_demo_db_v1';
+  var TEST = !!(window.CONFIG && window.CONFIG.TEST);   // version « essai » : données vides au départ, mémoire séparée
+  var KEY = TEST ? 'cgt_demo_db_v1' : 'cg_demo_db_v1';
   var PERSONNES = ['Jordana', 'Sara'];
+  var CATS_BASE = ['VIANDE', 'POISSON', 'LEGUMES', 'FRUITS', 'FROMAGE', 'LAITAGE', 'PLAT CUISINE', 'DESSERT', 'BOULANGERIE', 'PATE ET BASES', 'AUTRE'];
   var UNITES = ['portions', 'sachets', 'pièces', 'boîtes', 'barquettes', 'plats', 'plaquettes', 'bocaux', 'pots', 'bouteilles', 'g', 'kg', 'L'];
 
   function today() { return new Date().toISOString().slice(0, 10); }
@@ -21,7 +24,7 @@
         A('Courgettes rondelles', 'LEGUMES', 'sachets'), A('Courgettes entières', 'LEGUMES', 'pièces'),
         A('Saumon', 'POISSON', 'portions', true, 2), A('Beurre', 'LAITAGE', 'plaquettes', true, 1),
         A('Blanc de poulet', 'VIANDE', 'portions', true, 2), A('Épinards', 'LEGUMES', 'sachets', true, 1),
-        A('Pain de campagne', 'BOULANGERIE', 'pièces'), A('Lasagnes de Jordana', 'PLAT CUISINE', 'portions'),
+        A('Pain de campagne', 'BOULANGERIE', 'pièces'), A('Lasagnes maison', 'PLAT CUISINE', 'portions'),
         A('Glace vanille', 'DESSERT', 'barquettes'), A('Framboises', 'FRUITS', 'sachets'),
         A('Comté râpé', 'FROMAGE', 'sachets'), A('Pâte brisée', 'PATE ET BASES', 'pièces')
       ],
@@ -33,7 +36,7 @@
         M(18, 'Blanc de poulet', 'Ajout', 10, 'Coffre', 'Sara'), M(7, 'Blanc de poulet', 'Retrait', 8, 'Coffre', 'Jordana'),
         M(7, 'Blanc de poulet', 'Ajout', 2, 'Tiroir bas', 'Sara'), M(15, 'Épinards', 'Ajout', 4, 'Tiroir milieu', 'Jordana'),
         M(6, 'Épinards', 'Retrait', 3, 'Tiroir milieu', 'Jordana'), M(14, 'Pain de campagne', 'Ajout', 2, 'Tiroir haut', 'Sara'),
-        M(10, 'Lasagnes de Jordana', 'Ajout', 6, 'Coffre', 'Jordana', 'Fait maison'), M(4, 'Lasagnes de Jordana', 'Retrait', 1, 'Coffre', 'Sara'),
+        M(10, 'Lasagnes maison', 'Ajout', 6, 'Coffre', 'Jordana', 'Fait maison'), M(4, 'Lasagnes maison', 'Retrait', 1, 'Coffre', 'Sara'),
         M(8, 'Glace vanille', 'Ajout', 2, 'Tiroir haut', 'Jordana'), M(5, 'Framboises', 'Ajout', 3, 'Tiroir bas', 'Sara'),
         M(3, 'Comté râpé', 'Ajout', 2, 'Tiroir haut', 'Sara'), M(2, 'Pâte brisée', 'Ajout', 3, 'Tiroir milieu', 'Jordana')
       ],
@@ -45,6 +48,43 @@
       depenses: seedDep(),
       budget: 450, unites: UNITES.slice(), ordres: { emplacements: 'perso', categories: 'perso', unites: 'perso' }
     };
+  }
+
+  function emptyDb() {
+    return { emplacements: [], categories: CATS_BASE.slice(), aliments: [], mouvements: [], courses: [], depenses: [], budget: 0,
+      unites: UNITES.slice(), ordres: { emplacements: 'perso', categories: 'perso', unites: 'perso' }, foyer: ['Moi'] };
+  }
+  function foyer() { return db && db.foyer && db.foyer.length ? db.foyer : PERSONNES; }
+  /** Personnes du budget : en version test, « Moi » seul, ou deux prénoms si le partage est activé. */
+  function depNames() { return TEST ? foyer() : ['Sara', 'Jordana']; }
+  /** Jeu d'exemples (version test) : pas de prénoms dans les mouvements ; dépenses au nom du foyer (« Moi » ou les deux prénoms du partage). */
+  function examplesFor(noms) {
+    var o = seed(), n0 = noms[0], n1 = noms[1] || noms[0], m = { Sara: n0, Jordana: n1 };
+    o.categories = CATS_BASE.slice(); o.foyer = noms.slice();
+    o.mouvements.forEach(function (x) { x.personne = ''; });
+    o.courses.forEach(function (x) { x.ajoutePar = ''; });
+    o.depenses.forEach(function (d) { var np = {}; Object.keys(d.parts).forEach(function (k) { var t = m[k] || k; np[t] = Math.round(((np[t] || 0) + d.parts[k]) * 100) / 100; }); d.parts = np; });
+    return o;
+  }
+  function setFoyer(noms) {
+    var out = [];
+    (noms || []).forEach(function (n) { n = String(n || '').trim().slice(0, 30); if (n && !out.some(function (x) { return norm(x) === norm(n); })) out.push(n); });
+    if (!out.length) out = ['Moi'];
+    out = out.slice(0, 2);
+    var old = foyer(), map = {};
+    old.forEach(function (o, i) { map[o] = out[i] || out[0]; });
+    db.mouvements.forEach(function (x) { if (map[x.personne]) x.personne = map[x.personne]; });
+    db.courses.forEach(function (x) { if (map[x.ajoutePar]) x.ajoutePar = map[x.ajoutePar]; });
+    db.depenses.forEach(function (d) { var np = {}; Object.keys(d.parts).forEach(function (k) { var t = map[k] || k; np[t] = Math.round(((np[t] || 0) + d.parts[k]) * 100) / 100; }); d.parts = np; });
+    db.foyer = out;
+  }
+  function importData(o) {
+    var d = o && o.app === 'mon-garde-manger' && o.data;
+    if (!d || ['emplacements', 'categories', 'aliments', 'mouvements', 'courses'].some(function (k) { return !Array.isArray(d[k]); })) throw new Error('Ce fichier n’est pas une sauvegarde de Mon garde-manger.');
+    var e = emptyDb();
+    db = { emplacements: d.emplacements, categories: d.categories, aliments: d.aliments, mouvements: d.mouvements, courses: d.courses,
+      depenses: Array.isArray(d.depenses) ? d.depenses : [], budget: Number(d.budget) || 0, unites: Array.isArray(d.unites) ? d.unites : e.unites,
+      ordres: d.ordres || e.ordres, foyer: Array.isArray(d.foyer) && d.foyer.length ? d.foyer.slice(0, 2) : e.foyer };
   }
 
   function seedDep() {
@@ -59,7 +99,7 @@
   var db;
   function load() {
     try { var v = localStorage.getItem(KEY); if (v) { var o = JSON.parse(v); if (!o.depenses) { o.depenses = seedDep(); o.budget = 450; } if (!o.unites) o.unites = UNITES.slice(); if (!o.ordres) o.ordres = { emplacements: 'perso', categories: 'perso', unites: 'perso' }; return o; } } catch (e) {}
-    return seed();
+    return TEST ? emptyDb() : seed();
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
   db = load();
@@ -86,17 +126,17 @@
     });
     var mv = db.mouvements.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 200);
     var deps = db.depenses.map(function (d) {
-      var t = (d.parts.Sara || 0) + (d.parts.Jordana || 0);
-      return { id: d.id, date: d.date, magasin: d.magasin, parts: { Sara: d.parts.Sara || 0, Jordana: d.parts.Jordana || 0 }, total: Math.round(t * 100) / 100 };
+      var pp = {}, t = 0; depNames().forEach(function (n) { pp[n] = d.parts[n] || 0; t += pp[n]; });
+      return { id: d.id, date: d.date, magasin: d.magasin, parts: pp, total: Math.round(t * 100) / 100 };
     }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
     return { emplacements: sortList(db.emplacements, db.ordres.emplacements), categories: sortList(db.categories, db.ordres.categories),
-      unites: sortList(db.unites, db.ordres.unites), ordres: JSON.parse(JSON.stringify(db.ordres)), personnes: PERSONNES, aliments: aliments, courses: db.courses.slice(), mouvements: mv,
-      personnesDep: ['Sara', 'Jordana'], depenses: deps, budget: db.budget || 0 };
+      unites: sortList(db.unites, db.ordres.unites), ordres: JSON.parse(JSON.stringify(db.ordres)), personnes: TEST ? [] : PERSONNES.slice(), aliments: aliments, courses: db.courses.slice(), mouvements: mv,
+      personnesDep: depNames().slice(), depenses: deps, budget: db.budget || 0 };
   }
 
   function depParts(p) {
     var parts = {}, total = 0;
-    ['Sara', 'Jordana'].forEach(function (n) {
+    depNames().forEach(function (n) {
       var v = Math.round((Number(String((p.parts || {})[n] == null ? 0 : p.parts[n]).replace(',', '.')) || 0) * 100) / 100;
       if (v < 0) throw new Error('Les montants ne peuvent pas être négatifs.');
       parts[n] = v; total += v;
@@ -267,6 +307,10 @@
         var sa = findAl(p.aliment); if (!sa) throw new Error('Aliment introuvable.');
         sa.autoCourses = !!p.auto; sa.seuilCourses = Math.max(0, Number(p.seuil) || 0);
         if (sa.autoCourses) checkAuto(sa.nom); break; }
+      case 'startEmpty': { var f0 = foyer().slice(); db = emptyDb(); db.foyer = f0; break; }
+      case 'loadExamples': db = examplesFor(foyer()); break;
+      case 'setFoyer': setFoyer(p.noms); break;
+      case 'importData': importData(p.data); break;
       case 'setBudget': db.budget = Math.max(0, Number(p.budget) || 0); break;
       default: throw new Error('Action inconnue : ' + action);
     }
@@ -280,6 +324,7 @@
         setTimeout(function () { try { resolve(handle(action, JSON.parse(JSON.stringify(payload || {})))); } catch (e) { reject(e); } }, 120);
       });
     },
-    reset: function () { db = seed(); save(); }
+    reset: function () { db = TEST ? emptyDb() : seed(); save(); },
+    exportData: function () { return JSON.stringify({ app: 'mon-garde-manger', version: 1, exporte: today(), data: db }); }
   };
 })();

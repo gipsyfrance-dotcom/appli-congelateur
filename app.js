@@ -1,8 +1,10 @@
+/*! Mon garde-manger · © 2026 Sara Picaud — Tous droits réservés. Reproduction, copie ou réutilisation interdites sans autorisation écrite (voir LICENSE). */
 (function () {
   'use strict';
 
   var CFG = window.CONFIG || {};
   var DEMO = !CFG.API_URL;
+  var TEST = !!CFG.TEST;   // version « essai » : tout est stocké dans le téléphone, rien n'est envoyé
 
   /* ============================== Outils ============================== */
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -11,8 +13,8 @@
   var enc = encodeURIComponent;
   var norm = function (s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); };
   var ls = {
-    get: function (k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+    get: function (k, d) { try { var v = localStorage.getItem((TEST ? 't_' : '') + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem((TEST ? 't_' : '') + k, JSON.stringify(v)); } catch (e) {} }
   };
   var today = function () { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
   var fmtNum = function (n) { return String(Math.round(n * 100) / 100).replace('.', ','); };
@@ -85,6 +87,10 @@
     pen: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
     undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
     ruler: '<path d="M3 17 17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
+    book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M19 19v2H6a2 2 0 0 1-2-2"/>',
+    msg: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.5A8 8 0 1 1 21 12z"/>',
+    bug: '<path d="M9 7a3 3 0 0 1 6 0v1H9V7zM7 9h10v5a5 5 0 0 1-10 0V9zM3 12h4M17 12h4M4 19l3-2M20 19l-3-2"/>',
+    save: '<path d="M12 3v12M7 10l5 5 5-5M4 20h16"/>',
     key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
     euro: '<path d="M18 7a7 7 0 1 0 0 10M4 10h9M4 14h9"/>',
@@ -160,6 +166,7 @@
 
   /* ----- dépenses de courses ----- */
   var persDep = function () { return data.personnesDep || ['Sara', 'Jordana']; };
+  var shared = function () { return persDep().length > 1; };   // partage des dépenses entre deux personnes
   var eur = function (n) { return (Math.round(n * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; };
   var nb = function (n) { return (Math.round(n * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   var pnum = function (v) { var n = Number(String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
@@ -238,7 +245,14 @@
     var places = data.emplacements.map(function (n) {
       return '<a class="place-row" href="#/emplacement/' + enc(n) + '">' + ico('chest') + '<b>' + esc(n) + '</b><span class="pill">' + placeCount(n) + '</span><span class="lbl">aliments</span>' + ico('chev') + '</a>';
     }).join('');
-    return (DEMO ? '<div class="demo-flag">Mode démo : données fictives, enregistrées seulement dans ce navigateur.</div>' : '') +
+    var welcome = '';
+    if (TEST) {
+      var vide = !data.aliments.length && !data.mouvements.length;
+      welcome = '<div class="demo-flag">Version test · vos données restent dans ce téléphone</div>' +
+        (vide ? '<div class="card pad welcome"><h2 class="sec">Bienvenue !</h2><p style="margin:4px 0 12px">Votre garde-manger est vide. Lisez le mode d’emploi, puis choisissez de commencer à vide ou avec des exemples.</p><a class="btn" href="#/mode-emploi">Lire le mode d’emploi</a></div>' : '') +
+        '<div class="tbar"><a class="pillbtn" href="#/mode-emploi">' + ico('book') + 'Mode d’emploi</a><button class="pillbtn" data-act="fb-open" data-k="avis">' + ico('msg') + 'Mon avis</button><button class="pillbtn" data-act="fb-open" data-k="bug">' + ico('bug') + 'Un souci ?</button></div>';
+    }
+    return welcome + (DEMO && !TEST ? '<div class="demo-flag">Mode démo : données fictives, enregistrées seulement dans ce navigateur.</div>' : '') +
       (loadError && data ? '<div class="offline">Hors connexion : affichage de la dernière version enregistrée.</div>' : '') +
       '<header class="hero">' + ico('chest', 'hero-ic') + '<div><h1>Mon garde-manger</h1><p>Tout votre stock au bout des doigts</p></div></header>' +
       '<a class="search" href="#/stock?focus=1">' + ico('search') + '<span>Rechercher un aliment</span></a>' +
@@ -251,7 +265,7 @@
       '<a class="tile lav" href="#/courses">' + (buy ? '<span class="badge">' + buy + '</span>' : '') + '<span class="ti">' + ico('basket') + '</span><b>À acheter</b><small>Ma liste</small></a>' +
       '<a class="tile mint" href="#/courses?tab=budget"><span class="ti">' + ico('euro') + '</span><b>Budget courses</b><small>' + esc(budgetTileText()) + '</small></a></div>' +
       '<h2 class="sec">' + ico('chest') + 'Mes emplacements</h2><p class="sub">' + data.emplacements.length + ' espaces, un seul objectif : se régaler !</p>' +
-      '<div class="card list">' + places + '</div>';
+      (places ? '<div class="card list">' + places + '</div>' : '<div class="card pad"><p style="margin:0 0 10px">Aucun emplacement pour l’instant (congélateur, frigo, placard…).</p><a class="btn" href="#/emplacements">Créer un emplacement</a></div>');
   }
 
   function stockItems() {
@@ -367,17 +381,20 @@
       budgetBlock = '<div class="bar"><i class="' + (over ? 'over' : '') + '" style="width:' + pct + '%"></i></div><div class="ln"><span>Budget : ' + esc(eur(b).replace(',00', '')) + '</span><span>' +
         (over ? 'Dépassé de ' + esc(eur(s.total - b)) : 'Reste ' + esc(eur(b - s.total))) + '</span></div>';
     } else budgetBlock = '<button class="lnk" style="padding-top:6px" data-act="setbudget">Définir un budget mensuel' + ico('chev') + '</button>';
-    var who = persDep().map(function (p) { return '<div class="card"><small>Payé par ' + esc(p) + '</small><b>' + esc(eur(s.by[p])) + '</b></div>'; }).join('');
+    var partage = !TEST ? '' : (shared()
+      ? '<p class="hint" style="margin:0 2px 12px">Dépenses partagées entre ' + esc(persDep()[0]) + ' et ' + esc(persDep()[1]) + ' · <button class="lnk inl" data-act="share-open">modifier</button></p>'
+      : '<div class="card pad" style="margin-bottom:12px"><b>Vous partagez vos courses avec quelqu’un ?</b><p class="hint" style="margin:4px 0 10px">Activez le partage pour noter qui a payé quoi et voir la part de chacun.</p><button class="btn ghost" data-act="share-open">Activer le partage des dépenses</button></div>');
+    var who = !shared() ? '' : persDep().map(function (p) { return '<div class="card"><small>Payé par ' + esc(p) + '</small><b>' + esc(eur(s.by[p])) + '</b></div>'; }).join('');
     var rows = list.map(function (d) {
       var parts = persDep().filter(function (p) { return (d.parts[p] || 0) > 0; });
-      var who2 = parts.length > 1 ? parts.map(function (p) { return esc(p) + ' ' + esc(eur(d.parts[p])); }).join(' · ') : esc(parts[0] || '');
-      return '<div class="exp"><div class="ed">' + ico('basket') + '</div><div class="eb"><b>' + esc(d.magasin || 'Courses') + '</b><small>' + esc(fmtDate(d.date)) + ' · ' + who2 + '</small></div>' +
+      var who2 = !shared() ? '' : parts.length > 1 ? parts.map(function (p) { return esc(p) + ' ' + esc(eur(d.parts[p])); }).join(' · ') : esc(parts[0] || '');
+      return '<div class="exp"><div class="ed">' + ico('basket') + '</div><div class="eb"><b>' + esc(d.magasin || 'Courses') + '</b><small>' + esc(fmtDate(d.date)) + (who2 ? ' · ' + who2 : '') + '</small></div>' +
         '<div class="am">' + esc(eur(d.total)) + '</div><button class="edit" data-act="expense-edit" data-id="' + esc(d.id) + '" aria-label="Modifier la dépense">' + ico('pencil') + '</button></div>';
     }).join('');
     return '<div class="month"><button class="icon-btn" data-act="monthprev" aria-label="Mois précédent">' + ico('back') + '</button><b>' + esc(monthLabel(ym)) + '</b>' +
       '<button class="icon-btn" data-act="monthnext" aria-label="Mois suivant"' + (ym >= curMonth() ? ' disabled' : '') + '>' + ico('chev') + '</button></div>' +
       '<div class="card bud"><div class="lbl">Dépensé ce mois-ci</div><div class="tot">' + esc(eur(s.total)) + '</div>' + budgetBlock + '</div>' +
-      '<div class="who" style="grid-template-columns:repeat(' + persDep().length + ',1fr)">' + who + '</div>' +
+      partage + (who ? '<div class="who" style="grid-template-columns:repeat(' + persDep().length + ',1fr)">' + who + '</div>' : '') +
       '<button class="btn" data-act="expense-add">' + ico('plus') + 'Ajouter une dépense</button>' +
       '<a class="lnk" href="#/synthese?from=courses">Voir la synthèse annuelle' + ico('chev') + '</a>' +
       '<div class="day">Dépenses du mois</div>' +
@@ -391,24 +408,25 @@
     var tot = sumDep(list);
     var firstM = 13; list.forEach(function (d) { var mm = Number(d.date.slice(5, 7)); if (mm < firstM) firstM = mm; });
     var lastM = y === curY ? curM - 1 : 12, nbM = Math.max(0, lastM - firstM + 1), done = sumDep(list.filter(function (d) { var mm = Number(d.date.slice(5, 7)); return mm >= firstM && mm <= lastM; }));
-    var cards = persDep().map(function (p) { return '<div class="card"><small>' + esc(p) + '</small><b>' + esc(eur(tot.by[p])) + '</b></div>'; }).join('');
+    var PD = shared() ? persDep() : [];
+    var cards = PD.map(function (p) { return '<div class="card"><small>' + esc(p) + '</small><b>' + esc(eur(tot.by[p])) + '</b></div>'; }).join('');
     var rows = '';
     for (var m = 1; m <= 12; m++) {
       var ym = y + '-' + ('0' + m).slice(-2), s = sumDep(list.filter(function (d) { return d.date.slice(0, 7) === ym; })), fut = y > curY || (y === curY && m > curM);
       rows += '<div class="trow' + (fut ? ' mut' : '') + '"><span>' + MONTHS_S[m - 1] + '</span>' +
-        persDep().map(function (p) { return '<span>' + (fut ? '—' : nb(s.by[p])) + '</span>'; }).join('') + '<span class="tt">' + (fut ? '—' : nb(s.total)) + '</span></div>';
+        PD.map(function (p) { return '<span>' + (fut ? '—' : nb(s.by[p])) + '</span>'; }).join('') + '<span class="tt">' + (fut ? '—' : nb(s.total)) + '</span></div>';
     }
-    var cols = 'grid-template-columns:1.05fr ' + persDep().map(function () { return '1fr'; }).join(' ') + ' 1fr';
+    var cols = 'grid-template-columns:1.05fr ' + PD.map(function () { return '1fr'; }).join(' ') + ' 1fr';
     return header('Synthèse des dépenses', 'Courses · à titre indicatif', { back: true }) +
       '<div class="month"><button class="icon-btn" data-act="yearprev" aria-label="Année précédente"' + (y <= MIN_YEAR ? ' disabled' : '') + '>' + ico('back') + '</button><b>' + y + '</b>' +
       '<button class="icon-btn" data-act="yearnext" aria-label="Année suivante"' + (y >= curY ? ' disabled' : '') + '>' + ico('chev') + '</button></div>' +
       '<div class="card bud"><div class="lbl">Total dépensé en ' + y + '</div><div class="tot">' + esc(eur(tot.total)) + '</div>' +
       (nbM > 0 && done.total > 0 ? '<div class="lbl">Moyenne mensuelle ' + y + ' : <b>' + esc(eur(done.total / nbM)) + '</b></div><div class="lbl" style="font-size:12px">sur ' + nbM + ' mois terminé' + (nbM > 1 ? 's' : '') + (y === curY ? ', mois en cours non compté' : '') + '</div>' : '') + '</div>' +
-      '<div class="who" style="grid-template-columns:repeat(' + persDep().length + ',1fr)">' + cards + '</div>' +
+      (cards ? '<div class="who" style="grid-template-columns:repeat(' + PD.length + ',1fr)">' + cards + '</div>' : '') +
       '<div class="day">Mois par mois</div><div class="card" style="overflow:hidden">' +
-      '<div class="trow head" style="' + cols + '"><span>Mois</span>' + persDep().map(function (p) { return '<span>' + esc(p) + '</span>'; }).join('') + '<span>Total</span></div>' +
+      '<div class="trow head" style="' + cols + '"><span>Mois</span>' + PD.map(function (p) { return '<span>' + esc(p) + '</span>'; }).join('') + '<span>Total</span></div>' +
       rows.replace(/class="trow/g, 'style="' + cols + '" class="trow') +
-      '<div class="trow foot" style="' + cols + '"><span>Année</span>' + persDep().map(function (p) { return '<span>' + nb(tot.by[p]) + '</span>'; }).join('') + '<span>' + nb(tot.total) + '</span></div></div>' +
+      '<div class="trow foot" style="' + cols + '"><span>Année</span>' + PD.map(function (p) { return '<span>' + nb(tot.by[p]) + '</span>'; }).join('') + '<span>' + nb(tot.total) + '</span></div></div>' +
       '<p class="hint">Montants en euros. Les mois à venir s’afficheront au fil de l’année.</p>';
   }
 
@@ -417,7 +435,7 @@
     EXP.id = d ? d.id : null;
     var parts = persDep().map(function (p, i) {
       var v = d ? d.parts[p] || 0 : 0;
-      return '<div class="field"><label for="x-p-' + i + '">' + esc(p) + ' (€)</label><input class="inp" id="x-p-' + i + '" data-person="' + esc(p) + '" type="text" inputmode="decimal" autocomplete="off" value="' + esc(String(v).replace('.', ',')) + '"></div>';
+      return '<div class="field"><label for="x-p-' + i + '">' + (shared() ? esc(p) + ' (€)' : 'Montant (€)') + '</label><input class="inp" id="x-p-' + i + '" data-person="' + esc(p) + '" type="text" inputmode="decimal" autocomplete="off" value="' + esc(String(v).replace('.', ',')) + '"></div>';
     }).join('');
     openSheet('<h3>' + (d ? 'Modifier la dépense' : 'Nouvelle dépense') + '</h3>' +
       '<div class="two"><div class="field"><label for="x-date">Date</label><input class="inp" id="x-date" type="date" value="' + esc(d ? d.date : today()) + '"></div>' +
@@ -656,11 +674,77 @@
   document.addEventListener('pointerup', dragEnd);
   document.addEventListener('pointercancel', dragEnd);
 
+  /* ============================== Version test ============================== */
+  var GUIDE = [
+    ['Comment ça marche, en bref', '<p><b>Mon garde-manger</b> sert à savoir à tout moment ce qu’il y a dans votre congélateur, votre frigo et vos placards, sans rien compter à la main.</p><p>Chaque fois que vous <b>mettez</b> un aliment, vous l’<b>ajoutez</b>. Chaque fois que vous le <b>sortez</b>, vous le <b>retirez</b>. L’appli calcule toute seule ce qu’il reste. Elle vous prévient quand un aliment devient rare et le propose pour vos courses.</p>'],
+    ['Où sont mes données ?', '<p>Dans cette version test, <b>tout reste dans votre téléphone</b> (dans le navigateur). Rien n’est envoyé sur internet : personne d’autre ne voit ce que vous saisissez, pas même moi.</p><p>Deux conséquences à connaître :</p><ul><li>Si vous effacez les données du navigateur, ou désinstallez l’appli, <b>tout est perdu</b>.</li><li>Sur iPhone, l’appli installée sur l’écran d’accueil et Safari ont <b>chacun leur mémoire</b> : utilisez toujours la même.</li></ul><p>Pour garder une copie de sécurité, ou changer de téléphone, utilisez <b>Plus › Mes données › Exporter</b>.</p>'],
+    ['Installer l’appli sur l’écran d’accueil', '<p><b>Android (Chrome)</b> : menu ⋮ en haut à droite › « Ajouter à l’écran d’accueil » (ou « Installer l’application »).</p><p><b>iPhone (Safari)</b> : bouton Partager (carré avec une flèche) › « Sur l’écran d’accueil ».</p><p>Ensuite, ouvrez toujours l’appli depuis cette icône.</p>'],
+    ['Premiers pas', '<ol><li><b>Emplacements</b> : créez les endroits où vous rangez vos aliments (Plus › Emplacements). Exemples : Congélateur, Tiroir 1, Frigo, Placard. Vous pouvez les renommer et les réordonner en les faisant glisser.</li><li><b>Catégories et unités</b> : des catégories et unités courantes sont déjà prêtes. Ajoutez, renommez ou supprimez les vôtres dans Plus.</li><li><b>Premier aliment</b> : bouton « Enregistrer un mouvement » sur l’accueil.</li></ol>'],
+    ['Ajouter ou retirer un aliment', '<p>Accueil › <b>Enregistrer un mouvement</b>. Choisissez <b>Ajout</b> ou <b>Retrait</b>, l’aliment (tapez les premières lettres, ou créez-le), la quantité, l’unité, l’emplacement et, si vous voulez, une note (« fait maison », « sous vide »…).</p><p>Un même aliment peut être rangé à plusieurs endroits : l’appli connaît la quantité de chaque endroit. Impossible de retirer plus que ce qu’il y a.</p>'],
+    ['Voir le stock et chercher', '<p><b>Voir le stock</b> liste tous les aliments présents. Utilisez la loupe pour chercher, et les filtres pour trier par emplacement ou catégorie. Touchez un aliment pour voir où il est rangé et son historique.</p><p>Un aliment à zéro disparaît du stock mais reste dans « Tous les aliments » (Plus), pratique pour le retrouver.</p>'],
+    ['Stock faible et liste de courses', '<p>Sur la fiche d’un aliment, fixez un <b>seuil</b> : en dessous, il apparaît dans « Stock faible ». Vous pouvez aussi activer l’<b>ajout automatique aux courses</b> quand il tombe à ce seuil.</p><p>La page <b>À acheter</b> est votre liste de courses : ajoutez des articles à la main, cochez-les quand vous les avez achetés. Les articles déjà achetés vous sont proposés quand vous tapez, pour les remettre sur la liste en un geste.</p>'],
+    ['Budget et dépenses', '<p>Dans <b>Budget courses</b>, notez le montant de chaque passage en magasin. Fixez un budget mensuel (Plus › Budget mensuel) : l’appli vous dit ce qu’il vous reste. La <b>Synthèse</b> montre vos dépenses mois par mois et votre moyenne.</p><p><b>Vous partagez vos courses ?</b> Sur la page Budget, touchez « Activer le partage des dépenses » et écrivez les deux prénoms. Pour chaque dépense, vous noterez alors la part de chacun, et l’appli fait les totaux par personne. Vous pouvez désactiver le partage à tout moment.</p>'],
+    ['Corriger une erreur', '<p>Plus › <b>Historique des mouvements</b> : chaque ligne a un petit crayon (modifier la quantité) et une flèche (annuler le mouvement). Une confirmation vous est toujours demandée.</p>'],
+    ['Donner votre avis, signaler un souci', '<p>Cette version est en test : vos retours comptent ! Les boutons <b>Mon avis</b> et <b>Un souci ?</b> (sur l’accueil et dans Plus) ouvrent un court formulaire. Signalez un bug, une lenteur, quelque chose de pas clair, ou proposez une idée de fonction.</p>']
+  ];
+
+  function viewGuide() {
+    var sections = GUIDE.map(function (g, i) {
+      return '<details class="gd"' + (i < 2 ? ' open' : '') + '><summary>' + esc(g[0]) + '</summary><div class="gd-b">' + g[1] + '</div></details>';
+    }).join('');
+    var start = '<div class="card pad gd-start"><h2 class="sec" style="margin-bottom:12px">Par où commencer ?</h2>' +
+      '<p class="err" id="x-err" hidden></p>' +
+      '<button class="btn" data-act="start-empty">Commencer avec un garde-manger vide</button>' +
+      '<button class="btn ghost" data-act="start-examples" style="margin-top:8px">Commencer avec des exemples</button>' +
+      '<p class="hint">Les exemples permettent de découvrir l’appli avec de faux aliments. Vous pourrez tout effacer ensuite (Plus › Mes données › Tout effacer).</p></div>';
+    return header('Mode d’emploi', 'Tout savoir sur l’appli', { back: true }) + start + sections +
+      '<div class="card list" style="margin-top:14px">' + feedbackRows() + '</div>' +
+      '<p class="ver">© 2026 Sara Picaud · Tous droits réservés.<br>Application et contenus protégés : reproduction interdite sans autorisation.</p>';
+  }
+  function feedbackRows() {
+    return '<button class="menu-row" data-act="fb-open" data-k="avis">' + ico('msg') + '<span>Donner mon avis</span>' + ico('chev') + '</button>' +
+      '<button class="menu-row" data-act="fb-open" data-k="bug">' + ico('bug') + '<span>Signaler un bug, une lenteur ou proposer une idée</span>' + ico('chev') + '</button>';
+  }
+  function viewData() {
+    var n = data.aliments.length, m = data.mouvements.length;
+    return header('Mes données', 'Sauvegarde et restauration', { back: true }) +
+      '<div class="card pad"><p style="margin:0 0 10px">Vos données sont enregistrées <b>uniquement dans ce téléphone</b> : ' + n + ' aliment' + (n > 1 ? 's' : '') + ', ' + m + ' mouvement' + (m > 1 ? 's' : '') + '.</p>' +
+      '<button class="btn" data-act="data-export">' + ico('save') + ' Exporter mes données</button>' +
+      '<p class="hint">Crée un fichier de sauvegarde à garder (ou à vous envoyer). Faites-le de temps en temps.</p></div>' +
+      '<div class="card pad" style="margin-top:12px"><button class="btn ghost" data-act="data-import">Importer une sauvegarde</button>' +
+      '<input type="file" id="data-file" accept=".json,application/json" hidden>' +
+      '<p class="hint">Remplace tout le contenu actuel par celui du fichier. Utile pour changer de téléphone.</p></div>' +
+      '<div class="card pad" style="margin-top:12px"><button class="btn danger" data-act="data-wipe">Tout effacer</button>' +
+      '<p class="hint">Vide le garde-manger (emplacements, aliments, historique, courses). Les catégories et unités de base reviennent.</p></div>';
+  }
+  function fbUrl(k) { return (k === 'bug' && CFG.BUG_URL) || CFG.FEEDBACK_URL || ''; }
+  function openFeedback(k) {
+    var u = fbUrl(k);
+    if (!u) { toast('Le formulaire n’est pas encore disponible.', 4000); return; }
+    try { window.open(u, '_blank', 'noopener'); } catch (e) { location.href = u; }
+  }
+  function downloadBackup() {
+    var blob = new Blob([window.DemoApi.exportData()], { type: 'application/json' });
+    var a = document.createElement('a'), d = today();
+    a.href = URL.createObjectURL(blob); a.download = 'mon-garde-manger-' + d + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
+  function openShare() {
+    var on = shared(), f = on ? persDep() : [];
+    openSheet('<h3>Partage des dépenses</h3><p>Écrivez les deux prénoms. Pour chaque dépense, vous noterez la part de chacun.</p>' +
+      '<div class="field"><label for="x-n1">Prénom 1</label><input class="inp" id="x-n1" type="text" autocomplete="off" maxlength="30" value="' + esc(f[0] || '') + '"></div>' +
+      '<div class="field"><label for="x-n2">Prénom 2</label><input class="inp" id="x-n2" type="text" autocomplete="off" maxlength="30" value="' + esc(f[1] || '') + '"></div>' +
+      '<p class="err" id="x-err" hidden></p><button class="btn" data-act="share-save" id="x-save">' + (on ? 'Enregistrer' : 'Activer le partage') + '</button>' +
+      (on ? '<button class="btn danger sm" style="margin-top:10px" data-act="share-off">Désactiver le partage</button>' : ''));
+  }
+
   function viewMore() {
     var pers = data.personnes.map(function (p) { return '<button type="button" class="' + (me === p ? 'on add' : '') + '" data-act="setme" data-p="' + esc(p) + '">' + esc(p) + '</button>'; }).join('');
-    return header('Plus', 'Réglages et raccourcis') +
-      '<div class="card pad" style="margin-bottom:14px"><div class="field" style="margin:0"><label>' + 'Qui utilise cet appareil ?' + '</label><div class="seg" style="margin:0;grid-template-columns:repeat(' + data.personnes.length + ',1fr)">' + pers + '</div><p class="hint">Sert à pré-remplir « Personne » dans les mouvements.</p></div></div>' +
+    return header('Plus', 'Réglages et raccourcis') + (TEST ? '' :
+      '<div class="card pad" style="margin-bottom:14px"><div class="field" style="margin:0"><label>' + 'Qui utilise cet appareil ?' + '</label><div class="seg" style="margin:0;grid-template-columns:repeat(' + data.personnes.length + ',1fr)">' + pers + '</div><p class="hint">Sert à pré-remplir « Personne » dans les mouvements.</p></div></div>') +
       '<div class="card list">' +
+      (TEST ? '<a class="menu-row" href="#/mode-emploi">' + ico('book') + '<span>Mode d’emploi</span>' + ico('chev') + '</a>' : '') +
       '<a class="menu-row" href="#/synthese">' + ico('chart') + '<span>Synthèse des dépenses</span>' + ico('chev') + '</a>' +
       '<button class="menu-row" data-act="setbudget">' + ico('euro') + '<span>Budget mensuel des courses</span>' + ico('chev') + '</button>' +
       '<a class="menu-row" href="#/emplacements">' + ico('chest') + '<span>Emplacements</span>' + ico('chev') + '</a>' +
@@ -670,9 +754,9 @@
       '<a class="menu-row" href="#/historique">' + ico('clock') + '<span>Historique des mouvements</span>' + ico('chev') + '</a>' +
       '<a class="menu-row" href="#/stock?all=1">' + ico('list') + '<span>Tous les aliments (y compris à zéro)</span>' + ico('chev') + '</a>' +
       '<button class="menu-row" data-act="refresh">' + ico('refresh') + '<span>Actualiser les données</span>' + ico('chev') + '</button>' +
-      (DEMO ? '<button class="menu-row" data-act="demo-reset">' + ico('trash') + '<span>Réinitialiser la démo</span>' + ico('chev') + '</button>'
-        : '<button class="menu-row" data-act="change-token">' + ico('key') + '<span>Changer le code d’accès</span>' + ico('chev') + '</button>') + '</div>' +
-      '<p class="ver">Mon garde-manger · ' + (DEMO ? 'mode démo' : 'connecté au Google Sheet') + '</p>';
+      (TEST ? '<a class="menu-row" href="#/donnees">' + ico('save') + '<span>Mes données (exporter / importer)</span>' + ico('chev') + '</a>' + feedbackRows() : (DEMO ? '<button class="menu-row" data-act="demo-reset">' + ico('trash') + '<span>Réinitialiser la démo</span>' + ico('chev') + '</button>'
+        : '<button class="menu-row" data-act="change-token">' + ico('key') + '<span>Changer le code d’accès</span>' + ico('chev') + '</button>')) + '</div>' +
+      '<p class="ver">Mon garde-manger · ' + (TEST ? 'version test · données dans ce téléphone' : DEMO ? 'mode démo' : 'connecté au Google Sheet') + '<br>© 2026 Sara Picaud · Tous droits réservés</p>';
   }
 
   /* ----- formulaire de mouvement ----- */
@@ -745,7 +829,7 @@
       (avail !== null ? '<p class="hint" style="margin:-6px 2px 12px">Disponible dans cet emplacement : ' + esc(qty(avail, a.unite)) + '</p>' : '') +
       '<div class="field"><label for="f-emp">Emplacement <i>*</i></label><select class="inp" id="f-emp">' + empOpts + '</select></div>' +
       '<div class="two"><div class="field"><label for="f-date">Date <i>*</i></label><input class="inp" id="f-date" type="date" value="' + esc(F.date) + '"></div>' +
-      '<div class="field"><label for="f-pers">Personne</label><select class="inp" id="f-pers">' + persOpts + '</select></div></div>' +
+      (data.personnes.length ? '<div class="field"><label for="f-pers">Personne</label><select class="inp" id="f-pers">' + persOpts + '</select></div>' : '') + '</div>' +
       '<div class="field"><label for="f-note">Note</label><textarea class="inp" id="f-note" maxlength="200" placeholder="Facultatif">' + esc(F.note) + '</textarea><div class="counter"><span id="f-count">' + F.note.length + '</span>/200</div></div>' +
       '<p class="err" id="f-err" hidden></p>' +
       '<button class="btn ' + (ret ? 'ret' : '') + '" type="submit" id="f-submit">' + ico('check') + 'Enregistrer</button>';
@@ -800,7 +884,7 @@
   /* ============================== Rendu / routage ============================== */
   var ROUTES = [
     [/^\/$/, 'home'], [/^\/stock$/, 'stock'], [/^\/mouvement$/, 'move'], [/^\/alertes$/, 'alerts'], [/^\/courses$/, 'courses'],
-    [/^\/plus$/, 'more'], [/^\/categories$/, 'cats'], [/^\/emplacements$/, 'emps'], [/^\/unites$/, 'units'], [/^\/synthese$/, 'synth'], [/^\/emplacement\/(.+)$/, 'place'], [/^\/aliment\/(.+)$/, 'food'], [/^\/historique(?:\/(.+))?$/, 'history']
+    [/^\/plus$/, 'more'], [/^\/categories$/, 'cats'], [/^\/emplacements$/, 'emps'], [/^\/unites$/, 'units'], [/^\/synthese$/, 'synth'], [/^\/emplacement\/(.+)$/, 'place'], [/^\/aliment\/(.+)$/, 'food'], [/^\/historique(?:\/(.+))?$/, 'history'], [/^\/mode-emploi$/, 'guide'], [/^\/donnees$/, 'mydata']
   ];
   var memHash = null, navStack = [];
   function curHash() { return memHash !== null ? memHash : (location.hash.replace(/^#/, '') || '/'); }
@@ -832,7 +916,7 @@
       return '<a class="tab" data-tab="' + t[0] + '" href="' + t[3] + '">' + ico(t[2]) + '<span>' + t[1] + '</span></a>';
     }).join('');
   }
-  var TABMAP = { home: 'home', place: 'home', stock: 'stock', food: 'stock', alerts: 'stock', courses: 'courses', history: 'more', more: 'more', cats: 'more', emps: 'more', units: 'more' };
+  var TABMAP = { home: 'home', place: 'home', stock: 'stock', food: 'stock', alerts: 'stock', courses: 'courses', history: 'more', guide: 'more', mydata: 'more', more: 'more', cats: 'more', emps: 'more', units: 'more' };
 
   function render() {
     syncForm();
@@ -858,6 +942,8 @@
         case 'place': html = viewPlace(r.arg); break;
         case 'food': html = viewFood(r.arg); break;
         case 'history': html = viewHistory(r.arg); break;
+        case 'guide': html = viewGuide(); break;
+        case 'mydata': html = viewData(); break;
         default: html = viewHome();
       }
     }
@@ -1050,6 +1136,37 @@
       case 'setme': me = t.dataset.p; ls.set('cg_me', me); render(); break;
       case 'sugg-add': bringBack(t.dataset.nom); break;
       case 'toggle-bought': UI.showBought = !UI.showBought; render(); break;
+      case 'fb-open': openFeedback(t.dataset.k); break;
+      case 'share-open': openShare(); break;
+      case 'share-save': {
+        var n1 = $('#x-n1').value.trim(), n2 = $('#x-n2').value.trim(), nb = $('#x-save'), ne = $('#x-err');
+        if (!n1 || !n2) { ne.textContent = 'Écrivez les deux prénoms.'; ne.hidden = false; break; }
+        if (norm(n1) === norm(n2)) { ne.textContent = 'Les deux prénoms doivent être différents.'; ne.hidden = false; break; }
+        nb.disabled = true;
+        write('setFoyer', { noms: [n1, n2] }).then(function () { closeSheetSilent(); render(); toast('Partage enregistré ✓'); })
+          .catch(function (e) { nb.disabled = false; ne.textContent = e.message; ne.hidden = false; });
+        break; }
+      case 'share-off':
+        confirmSheet('Désactiver le partage ?', 'Les dépenses déjà notées sont gardées : les parts de chacun sont additionnées en un seul montant.', 'Désactiver', true).then(function (ok) {
+          if (ok) safe(function () { return write('setFoyer', { noms: [] }); }).then(function (r) { if (r) { render(); toast('Partage désactivé'); } });
+        }); break;
+      case 'start-empty': case 'start-examples': {
+        var ex = act === 'start-examples';
+        var go = function () {
+          safe(function () { return write(ex ? 'loadExamples' : 'startEmpty', {}); }).then(function (r) {
+            if (r) { toast(ex ? 'Exemples chargés ✓' : 'Garde-manger vide, c’est parti ✓'); nav('#/'); }
+          });
+        };
+        if (data.aliments.length || data.mouvements.length || data.emplacements.length) {
+          confirmSheet(ex ? 'Charger les exemples ?' : 'Repartir de zéro ?', 'Ce que vous avez déjà saisi sera remplacé.', ex ? 'Charger' : 'Tout effacer', true).then(function (ok) { if (ok) go(); });
+        } else go();
+        break; }
+      case 'data-export': downloadBackup(); toast('Sauvegarde créée ✓', 3500); break;
+      case 'data-import': { var fi = $('#data-file'); if (fi) fi.click(); break; }
+      case 'data-wipe':
+        confirmSheet('Tout effacer ?', 'Emplacements, aliments, historique et courses seront supprimés de ce téléphone. Pensez à exporter d’abord si besoin.', 'Tout effacer', true).then(function (ok) {
+          if (ok) safe(function () { return write('startEmpty', {}); }).then(function (r) { if (r) { toast('Garde-manger vidé'); nav('#/'); } });
+        }); break;
       case 'demo-reset': window.DemoApi.reset(); load(true); toast('Démo réinitialisée'); break;
       case 'change-token': ls.set('cg_token', ''); gateError = ''; render(); break;
       case 'achete': case 'unachete': {
@@ -1116,6 +1233,16 @@
 
   document.addEventListener('change', function (ev) {
     var t = ev.target;
+    if (t.id === 'data-file' && t.files && t.files[0]) {
+      var rd = new FileReader();
+      rd.onload = function () {
+        var o; try { o = JSON.parse(String(rd.result)); } catch (e) { toast('Fichier illisible.', 5000); return; }
+        confirmSheet('Importer cette sauvegarde ?', 'Tout le contenu actuel sera remplacé par celui du fichier.', 'Importer', true).then(function (ok) {
+          if (ok) safe(function () { return write('importData', { data: o }); }).then(function (r) { if (r) { toast('Sauvegarde importée ✓'); nav('#/'); } });
+        });
+      };
+      rd.readAsText(t.files[0]); t.value = '';
+    }
     if (t.id === 'f-aliment') { syncForm(); F.emp = F.type === 'Retrait' ? '' : F.emp; prefillFromAliment(); $('#move-form').innerHTML = moveFields(); }
     if (t.id === 'f-emp') { syncForm(); $('#move-form').innerHTML = moveFields(); }
     if (t.id === 'f-cat') { syncForm(); $('#move-form').innerHTML = moveFields(); if (F.cat === '__newcat__') { var nc = $('#f-newcat'); if (nc) nc.focus(); } }

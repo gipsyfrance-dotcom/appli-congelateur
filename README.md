@@ -53,3 +53,8 @@ L'adresse de l'appli est publique, mais les données ne sortent qu'avec le **cod
 - **Unité** (portions, sachets, g…) : l'appli la lit dans la colonne `Unite` d'Aliments et la propose dans le formulaire. À valider avec Jordana.
 - **Photos** : par défaut une icône par catégorie. Pour une vraie photo, ajouter une colonne `Photo` (lien d'image) dans Aliments.
 - **Notifications** d'alerte : non incluses (nécessitent un déclencheur planifié Apps Script ou n8n) — étape suivante possible.
+
+
+## Droits
+
+© 2026 Sara Picaud — **Tous droits réservés.** Ce dépôt est visible publiquement pour l’hébergement (GitHub Pages) uniquement : aucune licence n’est accordée. Toute reproduction, copie, réutilisation ou redistribution, totale ou partielle, est interdite sans autorisation écrite. Voir [LICENSE](LICENSE).

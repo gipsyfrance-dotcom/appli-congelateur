@@ -1,3 +1,4 @@
+/*! Mon garde-manger · © 2026 Sara Picaud — Tous droits réservés. Reproduction, copie ou réutilisation interdites sans autorisation écrite (voir LICENSE). */
 :root{
   --ink:#2f3b33; --ink2:#6c7a70; --teal:#5b876b; --teal-d:#4a7459; --line:#e2e7de;
   --card:#fff; --mint:#86dbc6; --mint-d:#13876f; --salmon:#f6a8a4; --salmon-d:#c23b33;
@@ -300,3 +301,16 @@ textarea.inp{height:92px;padding:12px 14px;resize:none}
 .mv .mv-ico .ic{width:19px;height:19px}
 .mv .mv-ico:active{background:#eef3f1}
 .sugg{margin:-6px 0 14px}
+
+/* ----- version test : accueil, mode d'emploi ----- */
+.tbar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.welcome{margin-bottom:12px;border-color:#bfe0d6;background:#f3fbf8}
+.gd{background:#fff;border:1px solid var(--line);border-radius:14px;margin:0 0 8px;overflow:hidden}
+.gd summary{font-weight:800;padding:13px 14px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.gd summary::-webkit-details-marker{display:none}
+.gd summary::after{content:'+';font-size:20px;color:var(--teal-d);font-weight:700}
+.gd[open] summary::after{content:'–'}
+.gd-b{padding:0 14px 12px;font-size:14.5px;line-height:1.5}
+.gd-b p{margin:0 0 8px}.gd-b ul,.gd-b ol{margin:0 0 8px;padding-left:20px}.gd-b li{margin-bottom:5px}
+.gd-start{margin-bottom:14px}
+.lnk.inl{display:inline;width:auto;padding:0;font-size:inherit}

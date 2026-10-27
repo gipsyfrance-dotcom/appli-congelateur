@@ -1,3 +1,4 @@
+/*! Mon garde-manger · © 2026 Sara Picaud — Tous droits réservés. Reproduction, copie ou réutilisation interdites sans autorisation écrite (voir LICENSE). */
 /**
  * Mon congélateur — API Google Apps Script
  * Lit et écrit dans le Google Sheet « Inventaire Congélateur ».
