@@ -685,7 +685,7 @@
     ['Stock faible et liste de courses', '<p>Sur la fiche d’un aliment, fixez un <b>seuil</b> : en dessous, il apparaît dans « Stock faible ». Vous pouvez aussi activer l’<b>ajout automatique aux courses</b> quand il tombe à ce seuil.</p><p>La page <b>À acheter</b> est votre liste de courses : ajoutez des articles à la main, cochez-les quand vous les avez achetés. Les articles déjà achetés vous sont proposés quand vous tapez, pour les remettre sur la liste en un geste.</p>'],
     ['Budget et dépenses', '<p>Dans <b>Budget courses</b>, notez le montant de chaque passage en magasin. Fixez un budget mensuel (Plus › Budget mensuel) : l’appli vous dit ce qu’il vous reste. La <b>Synthèse</b> montre vos dépenses mois par mois et votre moyenne.</p><p><b>Vous partagez vos courses ?</b> Sur la page Budget, touchez « Activer le partage des dépenses » et écrivez les deux prénoms. Pour chaque dépense, vous noterez alors la part de chacun, et l’appli fait les totaux par personne. Vous pouvez désactiver le partage à tout moment.</p>'],
     ['Corriger une erreur', '<p>Plus › <b>Historique des mouvements</b> : chaque ligne a un petit crayon (modifier la quantité) et une flèche (annuler le mouvement). Une confirmation vous est toujours demandée.</p>'],
-    ['Donner votre avis, signaler un souci', '<p>Cette version est en test : vos retours comptent ! Les boutons <b>Mon avis</b> et <b>Un souci ?</b> (sur l’accueil et dans Plus) ouvrent un court formulaire. Signalez un bug, une lenteur, quelque chose de pas clair, ou proposez une idée de fonction.</p>']
+    ['Donner votre avis, signaler un souci', '<p>Cette version est en test : vos retours comptent ! Les boutons <b>Mon avis</b> et <b>Un souci ?</b> (sur l’accueil et dans Plus) ouvrent un court formulaire. Signalez un bug, une lenteur, quelque chose de pas clair, ou proposez une idée de fonction.</p><p>Pour une question, utilisez <b>Plus › Contacter Sara</b>.</p>']
   ];
 
   function viewGuide() {
@@ -703,7 +703,8 @@
   }
   function feedbackRows() {
     return '<button class="menu-row" data-act="fb-open" data-k="avis">' + ico('msg') + '<span>Donner mon avis</span>' + ico('chev') + '</button>' +
-      '<button class="menu-row" data-act="fb-open" data-k="bug">' + ico('bug') + '<span>Signaler un bug, une lenteur ou proposer une idée</span>' + ico('chev') + '</button>';
+      '<button class="menu-row" data-act="fb-open" data-k="bug">' + ico('bug') + '<span>Signaler un bug, une lenteur ou proposer une idée</span>' + ico('chev') + '</button>' +
+      '<button class="menu-row" data-act="fb-open" data-k="contact">' + ico('user') + '<span>Contacter Sara</span>' + ico('chev') + '</button>';
   }
   function viewData() {
     var n = data.aliments.length, m = data.mouvements.length;
@@ -717,7 +718,7 @@
       '<div class="card pad" style="margin-top:12px"><button class="btn danger" data-act="data-wipe">Tout effacer</button>' +
       '<p class="hint">Vide le garde-manger (emplacements, aliments, historique, courses). Les catégories et unités de base reviennent.</p></div>';
   }
-  function fbUrl(k) { return (k === 'bug' && CFG.BUG_URL) || CFG.FEEDBACK_URL || ''; }
+  function fbUrl(k) { return (k === 'bug' && CFG.BUG_URL) || (k === 'contact' && CFG.CONTACT_URL) || CFG.FEEDBACK_URL || ''; }
   function openFeedback(k) {
     var u = fbUrl(k);
     if (!u) { toast('Le formulaire n’est pas encore disponible.', 4000); return; }

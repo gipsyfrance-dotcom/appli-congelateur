@@ -57,4 +57,4 @@ L'adresse de l'appli est publique, mais les données ne sortent qu'avec le **cod
 
 ## Droits
 
-© 2026 Sara Picaud — **Tous droits réservés.** Ce dépôt est visible publiquement pour l’hébergement (GitHub Pages) uniquement : aucune licence n’est accordée. Toute reproduction, copie, réutilisation ou redistribution, totale ou partielle, est interdite sans autorisation écrite. Voir [LICENSE](LICENSE).
+© 2026 Sara Picaud — **Tous droits réservés.** Ce dépôt est visible publiquement pour l’hébergement (GitHub Pages) uniquement : aucune licence n’est accordée. Toute reproduction, copie, réutilisation ou redistribution, totale ou partielle, est interdite sans autorisation écrite. Voir [LICENSE](LICENSE). Contact : [formulaire](https://docs.google.com/forms/d/e/1FAIpQLSdG6pkvMpzdqr9CTvllLzUOKu6t7MiNjjyBHZeWPjTxmUlhZA/viewform).
